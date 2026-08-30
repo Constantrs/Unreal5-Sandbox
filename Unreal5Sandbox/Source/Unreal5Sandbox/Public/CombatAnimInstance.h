@@ -23,4 +23,11 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "CombatAnimInstance|CharacterState")
 	ECombatState CombatState;
+
+	UPROPERTY(BlueprintReadOnly, Category = "CombatAnimInstance|Parameters")
+	bool IsInAir = false;
+	
+	UPROPERTY(BlueprintReadOnly, Category = "CombatAnimInstance|Parameters")
+	bool IsMoving = false;
+	
 };

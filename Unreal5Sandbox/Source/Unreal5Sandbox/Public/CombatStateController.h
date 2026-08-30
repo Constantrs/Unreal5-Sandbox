@@ -9,9 +9,14 @@
 UENUM(BlueprintType)
 enum class ECombatState : uint8
 {
-	State_Idle = 0		UMETA(DisplayName = "Idle"),
-	State_Run = 1		UMETA(DisplayName = "Run"),
-	Undefined			UMETA(Hidden),
+	State_Idle = 1				UMETA(DisplayName = "Idle"),
+	State_Run = 2				UMETA(DisplayName = "Run"),
+	State_Land = 3				UMETA(DisplayName = "Land"),
+	State_Jump = 4				UMETA(DisplayName = "Jump"),
+	State_Fall = 5				UMETA(DisplayName = "Fall"),
+	StateMaxIndex_OnGround = 3	UMETA(Hidden),
+	StateMaxIndex_OnAir = 5		UMETA(Hidden),
+	State_Undefined	= 0			UMETA(Hidden),
 };
 
 UCLASS( ClassGroup=(CombatSandbox), meta=(BlueprintSpawnableComponent) )

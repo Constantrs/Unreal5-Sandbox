@@ -3,6 +3,7 @@
 
 #include "CombatAnimInstance.h"
 #include "CombatCharacter.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 void UCombatAnimInstance::NativeInitializeAnimation()
 {
@@ -24,5 +25,12 @@ void UCombatAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		{
 			CombatState = combatStateController->GetCombatState();
 		}
+
+		if (auto characterMovement = CombatCharacter->GetCharacterMovement())
+		{
+			IsInAir = characterMovement->IsFalling();
+		}
+
+		IsMoving = CombatCharacter->HasMoveInput();
 	}
 }

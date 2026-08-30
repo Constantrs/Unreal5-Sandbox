@@ -26,6 +26,13 @@ public:
 	
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	virtual void Jump() override;
+
+	bool HasMoveInput() const
+	{
+		return MoveInput;
+	}
+	
 	UCombatStateController* GetCombatStateController() const
 	{
 		return StateController;
@@ -41,17 +48,20 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "CombatCharacter|Input")
 	TObjectPtr<UInputAction> InputAction_Look;
+
+	UPROPERTY(EditDefaultsOnly, Category = "CombatCharacter|Input")
+	TObjectPtr<UInputAction> InputAction_Jump;
 	
 	virtual void RegisterCombatInput();
 	virtual void BindInputActions(UEnhancedInputComponent* EnhancedInputComponent);
 
-	virtual  void UpdateCombatState();
+	virtual void UpdateCombatState(float DeltaTime);
 	
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
 private:
 	bool InputInitialized = false;
-	bool MoveInputValid = false;
+	bool MoveInput = false;
 
 	UPROPERTY(VisibleAnywhere, Category = "CombatCharacter|Component")
 	USpringArmComponent* CameraBoom;

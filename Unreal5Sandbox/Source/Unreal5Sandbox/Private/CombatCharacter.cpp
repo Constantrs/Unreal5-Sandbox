@@ -40,7 +40,7 @@ void ACombatCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	UpdateCombatState();
+	UpdateCombatState(DeltaTime);
 }
 
 void ACombatCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -52,6 +52,23 @@ void ACombatCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		UE_LOG(LogTemp, Log, TEXT("<ACombatCharacter::SetupPlayerInputComponent> BindInputActions"));
 		
 		BindInputActions(enhancedInputComponent);
+	}
+}
+
+void ACombatCharacter::Jump()
+{
+	Super::Jump();
+
+	auto currentState = StateController->GetCombatState();
+	if (currentState > ECombatState::StateMaxIndex_OnGround)
+	{
+		if (auto charaMovementComponent = GetCharacterMovement())
+		{
+			if (!charaMovementComponent->IsFalling())
+			{
+				StateController->SetCombatState(ECombatState::State_Jump);
+			}
+		}	
 	}
 }
 
@@ -87,15 +104,35 @@ void ACombatCharacter::BindInputActions(UEnhancedInputComponent* EnhancedInputCo
 {
 	EnhancedInputComponent->BindAction(InputAction_Movement, ETriggerEvent::Triggered, this, &ACombatCharacter::Move);
 	EnhancedInputComponent->BindAction(InputAction_Look, ETriggerEvent::Triggered, this, &ACombatCharacter::Look);
+	EnhancedInputComponent->BindAction(InputAction_Jump, ETriggerEvent::Triggered, this, &ACombatCharacter::Jump);
 }
 
-void ACombatCharacter::UpdateCombatState()
+void ACombatCharacter::UpdateCombatState(float DeltaTime)
 {
 	if (IsValid(StateController))
 	{
-		StateController->SetCombatState(MoveInputValid ? ECombatState::State_Run : ECombatState::State_Idle);
+		if (auto charaMovementComponent = GetCharacterMovement())
+		{
+			auto currentState = StateController->GetCombatState();
+
+			// Ground to Air
+			if (currentState <= ECombatState::StateMaxIndex_OnGround)
+			{
+				// TODO: check Fall
+				StateController->SetCombatState(HasMoveInput() ? ECombatState::State_Run : ECombatState::State_Idle);
+			}
+			// Air to Ground
+			else if (currentState > ECombatState::StateMaxIndex_OnGround && currentState <= ECombatState::StateMaxIndex_OnAir)
+			{
+				if (!charaMovementComponent->IsFalling())
+				{
+					StateController->SetCombatState(ECombatState::State_Land);
+				}
+			}
+		}
 	}
-	MoveInputValid = false;
+	
+	MoveInput = false;
 }
 
 void ACombatCharacter::Move(const FInputActionValue& Value)
@@ -123,7 +160,7 @@ void ACombatCharacter::Move(const FInputActionValue& Value)
 	AddMovementInput(forwardVector, movementVector.Y);
 	AddMovementInput(rightVector, movementVector.X);
 
-	MoveInputValid = true;
+	MoveInput = true;
 }
 
 void ACombatCharacter::Look(const FInputActionValue& Value)
