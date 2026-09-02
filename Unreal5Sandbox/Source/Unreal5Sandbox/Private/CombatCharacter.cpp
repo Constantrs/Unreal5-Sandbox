@@ -6,9 +6,6 @@
 #include "Camera/CameraComponent.h"
 #include "CombatStateController.h"
 
-#include "Components/InputComponent.h"
-#include "EnhancedInputComponent.h"
-#include "EnhancedInputSubsystems.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 ACombatCharacter::ACombatCharacter()
@@ -46,13 +43,6 @@ void ACombatCharacter::Tick(float DeltaTime)
 void ACombatCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
-	if (UEnhancedInputComponent* enhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
-	{
-		UE_LOG(LogTemp, Log, TEXT("<ACombatCharacter::SetupPlayerInputComponent> BindInputActions"));
-		
-		BindInputActions(enhancedInputComponent);
-	}
 }
 
 void ACombatCharacter::Jump()
@@ -72,39 +62,19 @@ void ACombatCharacter::Jump()
 	}
 }
 
+bool ACombatCharacter::IsLastInputExist() const
+{
+	const FVector lastInputVector = GetLastMovementInputVector();
+	if (lastInputVector.SquaredLength() > 0)
+	{
+		return true;
+	}
+	return false;
+}
+
 void ACombatCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
-	RegisterCombatInput();
-}
-
-void ACombatCharacter::RegisterCombatInput()
-{
-	if (!InputMappingContext)
-	{
-		return;
-	}
-
-	if (const APlayerController* playerController = GetController<APlayerController>())
-	{
-		if (const ULocalPlayer* localPlayer = playerController->GetLocalPlayer())
-		{
-			if (UEnhancedInputLocalPlayerSubsystem* subsystem = localPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
-			{
-				subsystem->AddMappingContext(InputMappingContext, 0);
-				InputInitialized = true;
-				UE_LOG(LogTemp, Log, TEXT("<ACombatCharacter::RegisterCombatInput> Register Input Succeeded"));
-			}
-		}
-	}
-}
-
-void ACombatCharacter::BindInputActions(UEnhancedInputComponent* EnhancedInputComponent)
-{
-	EnhancedInputComponent->BindAction(InputAction_Movement, ETriggerEvent::Triggered, this, &ACombatCharacter::Move);
-	EnhancedInputComponent->BindAction(InputAction_Look, ETriggerEvent::Triggered, this, &ACombatCharacter::Look);
-	EnhancedInputComponent->BindAction(InputAction_Jump, ETriggerEvent::Triggered, this, &ACombatCharacter::Jump);
 }
 
 void ACombatCharacter::UpdateCombatState(float DeltaTime)
@@ -119,7 +89,7 @@ void ACombatCharacter::UpdateCombatState(float DeltaTime)
 			if (currentState <= ECombatState::StateMaxIndex_OnGround)
 			{
 				// TODO: check Fall
-				StateController->SetCombatState(HasMoveInput() ? ECombatState::State_Run : ECombatState::State_Idle);
+				StateController->SetCombatState(IsLastInputExist() ? ECombatState::State_Run : ECombatState::State_Idle);
 			}
 			// Air to Ground
 			else if (currentState > ECombatState::StateMaxIndex_OnGround && currentState <= ECombatState::StateMaxIndex_OnAir)
@@ -131,53 +101,4 @@ void ACombatCharacter::UpdateCombatState(float DeltaTime)
 			}
 		}
 	}
-	
-	MoveInput = false;
-}
-
-void ACombatCharacter::Move(const FInputActionValue& Value)
-{
-	if (!InputInitialized)
-	{
-		return;
-	}
-	
-	auto controller = GetController();
-	if (!IsValid(controller))
-	{
-		return;
-	}
-
-	const FVector2D movementVector = Value.Get<FVector2D>();
-	const FRotator rotation = controller->GetControlRotation();
-	const FRotator yawRotation(0.0f, rotation.Yaw, 0.0f);
-
-	const FVector forwardVector = FRotationMatrix(yawRotation).GetUnitAxis(EAxis::X);
-	const FVector rightVector = FRotationMatrix(yawRotation).GetUnitAxis(EAxis::Y);
-
-	UE_LOG(LogTemp, Log, TEXT("<ACombatCharacter::RegisterCombatInput> Move"));
-	
-	AddMovementInput(forwardVector, movementVector.Y);
-	AddMovementInput(rightVector, movementVector.X);
-
-	MoveInput = true;
-}
-
-void ACombatCharacter::Look(const FInputActionValue& Value)
-{
-	if (!InputInitialized)
-	{
-		return;
-	}
-	
-	auto controller = GetController();
-	if (!IsValid(controller))
-	{
-		return;
-	}
-
-	const FVector2D lookAxisVector = Value.Get<FVector2D>();
-
-	AddControllerPitchInput(lookAxisVector.Y);
-	AddControllerYawInput(lookAxisVector.X);
 }

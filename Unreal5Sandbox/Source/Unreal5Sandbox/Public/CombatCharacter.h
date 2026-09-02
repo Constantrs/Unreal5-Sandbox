@@ -10,9 +10,6 @@
 class USpringArmComponent;
 class UCameraComponent;
 class UCombatStateController;
-class UInputMappingContext;
-class UInputAction;
-class UEnhancedInputComponent;
 
 UCLASS( ClassGroup=(CombatSandbox) )
 class UNREAL5SANDBOX_API ACombatCharacter : public ACharacter
@@ -28,10 +25,7 @@ public:
 
 	virtual void Jump() override;
 
-	bool HasMoveInput() const
-	{
-		return MoveInput;
-	}
+	bool IsLastInputExist() const;
 	
 	UCombatStateController* GetCombatStateController() const
 	{
@@ -40,29 +34,9 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	
-	UPROPERTY(EditDefaultsOnly, Category = "CombatCharacter|Input")
-	TObjectPtr<UInputMappingContext> InputMappingContext;
-
-	UPROPERTY(EditDefaultsOnly, Category = "CombatCharacter|Input")
-	TObjectPtr<UInputAction> InputAction_Movement;
-
-	UPROPERTY(EditDefaultsOnly, Category = "CombatCharacter|Input")
-	TObjectPtr<UInputAction> InputAction_Look;
-
-	UPROPERTY(EditDefaultsOnly, Category = "CombatCharacter|Input")
-	TObjectPtr<UInputAction> InputAction_Jump;
-	
-	virtual void RegisterCombatInput();
-	virtual void BindInputActions(UEnhancedInputComponent* EnhancedInputComponent);
-
 	virtual void UpdateCombatState(float DeltaTime);
-	
-	void Move(const FInputActionValue& Value);
-	void Look(const FInputActionValue& Value);
 private:
-	bool InputInitialized = false;
-	bool MoveInput = false;
-
+	
 	UPROPERTY(VisibleAnywhere, Category = "CombatCharacter|Component")
 	USpringArmComponent* CameraBoom;
 

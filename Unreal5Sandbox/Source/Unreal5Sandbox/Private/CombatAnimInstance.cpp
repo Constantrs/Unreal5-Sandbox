@@ -31,6 +31,6 @@ void UCombatAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 			IsInAir = characterMovement->IsFalling();
 		}
 
-		IsMoving = CombatCharacter->HasMoveInput();
+		IsMoving = CombatCharacter->IsLastInputExist();
 	}
 }
