@@ -5,22 +5,16 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "CombatStateController.h"
+#include "CombatCharacterMovementComponent.h"
 
-#include "GameFramework/CharacterMovementComponent.h"
-
-ACombatCharacter::ACombatCharacter()
+ACombatCharacter::ACombatCharacter(const FObjectInitializer& ObjectInitializer)
+: Super(ObjectInitializer.SetDefaultSubobjectClass<UCombatCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
 	PrimaryActorTick.bCanEverTick = true;
 
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
-
-	if (auto charaMovementComponent = GetCharacterMovement())
-	{
-		charaMovementComponent->bOrientRotationToMovement = true;
-		charaMovementComponent->RotationRate = FRotator(0, 540.0f, 0);
-	}
 	
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(FName("CameraBoom"));
 	CameraBoom->SetupAttachment(GetRootComponent());
@@ -31,6 +25,8 @@ ACombatCharacter::ACombatCharacter()
 	ViewCamera->SetupAttachment(CameraBoom);
 
 	StateController = CreateDefaultSubobject<UCombatStateController>(FName("CombatStateController"));
+
+	CombatCharacterMovement = Cast<UCombatCharacterMovementComponent>(GetCharacterMovement());
 }
 
 void ACombatCharacter::Tick(float DeltaTime)

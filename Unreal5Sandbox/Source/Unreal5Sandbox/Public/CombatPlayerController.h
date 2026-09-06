@@ -19,16 +19,6 @@ public:
 	ACombatPlayerController();
 
 protected:
-	virtual void BeginPlay() override;
-
-	virtual  void SetupInputComponent() override;
-
-	virtual void CharacterMove(const FInputActionValue& Value);
-	
-	virtual void CharacterLook(const FInputActionValue& Value);
-
-	virtual void CharacterJump();
-private:
 	UPROPERTY(EditDefaultsOnly, Category = "CombatPlayerController|Input")
 	TObjectPtr<UInputMappingContext> InputMappingContext;
 
@@ -41,6 +31,24 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "CombatPlayerController|Input")
 	TObjectPtr<UInputAction> InputAction_Jump;
 
+	UPROPERTY(EditDefaultsOnly, Category = "CombatPlayerController|Input")
+	TObjectPtr<UInputAction> InputAction_Sprint;
+	
+	virtual void BeginPlay() override;
+
+	virtual  void SetupInputComponent() override;
+
+	virtual void CharacterMove(const FInputActionValue& Value);
+	
+	virtual void CharacterLook(const FInputActionValue& Value);
+
+	virtual void CharacterJump();
+
+	virtual void SprintPressed();
+	
+	virtual void SprintReleased();
+	
+private:
 	void SetupInputController();
 
 	void BindCombatInputActions();

@@ -3,10 +3,11 @@
 
 #include "CombatPlayerController.h"
 
-#include "CombatCharacter.h"
 #include "Components/InputComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "CombatCharacter.h"
+#include "CombatCharacterMovementComponent.h"
 
 ACombatPlayerController::ACombatPlayerController()
 {
@@ -65,6 +66,34 @@ void ACombatPlayerController::CharacterJump()
 	}
 }
 
+void ACombatPlayerController::SprintPressed()
+{
+	if(auto controlledPawn = GetPawn<APawn>())
+	{
+		if (auto controlledCharacter = Cast<ACombatCharacter>(controlledPawn))
+		{
+			if (auto combatMovement = controlledCharacter->GetCombatCharacterMovementComponent())
+			{
+				combatMovement->SprintPressed();
+			}
+		}
+	}
+}
+
+void ACombatPlayerController::SprintReleased()
+{
+	if(auto controlledPawn = GetPawn<APawn>())
+	{
+		if (auto controlledCharacter = Cast<ACombatCharacter>(controlledPawn))
+		{
+			if (auto combatMovement = controlledCharacter->GetCombatCharacterMovementComponent())
+			{
+				combatMovement->SprintReleased();
+			}
+		}
+	}
+}
+
 void ACombatPlayerController::SetupInputController()
 {
 	check(InputMappingContext);
@@ -86,7 +115,9 @@ void ACombatPlayerController::BindCombatInputActions()
 		enhancedInputComponent->BindAction(InputAction_Movement, ETriggerEvent::Triggered, this, &ACombatPlayerController::CharacterMove);
 		enhancedInputComponent->BindAction(InputAction_Look, ETriggerEvent::Triggered, this, &ACombatPlayerController::CharacterLook);
 		enhancedInputComponent->BindAction(InputAction_Jump, ETriggerEvent::Triggered, this, &ACombatPlayerController::CharacterJump);
-		
+
+		enhancedInputComponent->BindAction(InputAction_Sprint, ETriggerEvent::Triggered, this, &ACombatPlayerController::SprintPressed);
+		enhancedInputComponent->BindAction(InputAction_Sprint, ETriggerEvent::Completed, this, &ACombatPlayerController::SprintReleased);
 		UE_LOG(LogTemp, Log, TEXT("<ACombatPlayerController::BindCombatInputActions> Bind Input Actions Succeeded!"));
 	}
 }
