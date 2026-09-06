@@ -9,6 +9,7 @@
 
 UCombatCharacterMovementComponent::UCombatCharacterMovementComponent()
 {
+	NavAgentProps.bCanCrouch = true;
 }
 
 void UCombatCharacterMovementComponent::SprintPressed()

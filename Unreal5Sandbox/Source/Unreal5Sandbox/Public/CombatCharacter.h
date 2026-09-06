@@ -25,6 +25,8 @@ public:
 
 	virtual void Jump() override;
 
+	virtual void Crouch();
+	
 	bool IsLastInputExist() const;
 	
 	UCombatStateController* GetCombatStateController() const
@@ -54,4 +56,5 @@ protected:
 	
 	virtual void UpdateCombatState(float DeltaTime);
 private:
+	bool IsCrouching = false;
 };

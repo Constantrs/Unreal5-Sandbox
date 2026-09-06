@@ -28,6 +28,8 @@ void ACombatPlayerController::SetupInputComponent()
 	BindCombatInputActions();
 }
 
+#pragma region CharacterActions
+
 void ACombatPlayerController::CharacterMove(const FInputActionValue& Value)
 {
 	const FVector2D movementVector = Value.Get<FVector2D>();
@@ -65,6 +67,19 @@ void ACombatPlayerController::CharacterJump()
 		}
 	}
 }
+
+void ACombatPlayerController::CharacterCrouch()
+{
+	if(auto controlledPawn = GetPawn<APawn>())
+	{
+		if (auto controlledCharacter = Cast<ACombatCharacter>(controlledPawn))
+		{
+			controlledCharacter->Crouch();
+		}
+	}
+}
+
+#pragma endregion CharacterActions
 
 void ACombatPlayerController::SprintPressed()
 {
@@ -115,6 +130,7 @@ void ACombatPlayerController::BindCombatInputActions()
 		enhancedInputComponent->BindAction(InputAction_Movement, ETriggerEvent::Triggered, this, &ACombatPlayerController::CharacterMove);
 		enhancedInputComponent->BindAction(InputAction_Look, ETriggerEvent::Triggered, this, &ACombatPlayerController::CharacterLook);
 		enhancedInputComponent->BindAction(InputAction_Jump, ETriggerEvent::Triggered, this, &ACombatPlayerController::CharacterJump);
+		enhancedInputComponent->BindAction(InputAction_Crouch, ETriggerEvent::Triggered, this, &ACombatPlayerController::CharacterCrouch);
 
 		enhancedInputComponent->BindAction(InputAction_Sprint, ETriggerEvent::Triggered, this, &ACombatPlayerController::SprintPressed);
 		enhancedInputComponent->BindAction(InputAction_Sprint, ETriggerEvent::Completed, this, &ACombatPlayerController::SprintReleased);

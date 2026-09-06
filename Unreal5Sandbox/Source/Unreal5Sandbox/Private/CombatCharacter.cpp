@@ -33,6 +33,13 @@ void ACombatCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+
+	if (IsValid(CombatCharacterMovement))
+	{
+		CombatCharacterMovement->bWantsToCrouch = IsCrouching;
+		IsCrouching = false;
+	}
+	
 	UpdateCombatState(DeltaTime);
 }
 
@@ -48,13 +55,21 @@ void ACombatCharacter::Jump()
 	auto currentState = StateController->GetCombatState();
 	if (currentState > ECombatState::StateMaxIndex_OnGround)
 	{
-		if (auto charaMovementComponent = GetCharacterMovement())
+		if (IsValid(CombatCharacterMovement))
 		{
-			if (!charaMovementComponent->IsFalling())
+			if (!CombatCharacterMovement->IsFalling())
 			{
 				StateController->SetCombatState(ECombatState::State_Jump);
 			}
 		}	
+	}
+}
+
+void ACombatCharacter::Crouch()
+{
+	if (IsValid(CombatCharacterMovement))
+	{
+		IsCrouching = true;
 	}
 }
 
@@ -77,7 +92,7 @@ void ACombatCharacter::UpdateCombatState(float DeltaTime)
 {
 	if (IsValid(StateController))
 	{
-		if (auto charaMovementComponent = GetCharacterMovement())
+		if (IsValid(CombatCharacterMovement))
 		{
 			auto currentState = StateController->GetCombatState();
 
@@ -90,7 +105,7 @@ void ACombatCharacter::UpdateCombatState(float DeltaTime)
 			// Air to Ground
 			else if (currentState > ECombatState::StateMaxIndex_OnGround && currentState <= ECombatState::StateMaxIndex_OnAir)
 			{
-				if (!charaMovementComponent->IsFalling())
+				if (!CombatCharacterMovement->IsFalling())
 				{
 					StateController->SetCombatState(ECombatState::State_Land);
 				}

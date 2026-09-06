@@ -30,7 +30,10 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "CombatPlayerController|Input")
 	TObjectPtr<UInputAction> InputAction_Jump;
-
+	
+	UPROPERTY(EditDefaultsOnly, Category = "CombatPlayerController|Input")
+	TObjectPtr<UInputAction> InputAction_Crouch;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "CombatPlayerController|Input")
 	TObjectPtr<UInputAction> InputAction_Sprint;
 	
@@ -43,6 +46,8 @@ protected:
 	virtual void CharacterLook(const FInputActionValue& Value);
 
 	virtual void CharacterJump();
+	
+	virtual void CharacterCrouch();
 
 	virtual void SprintPressed();
 	
