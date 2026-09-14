@@ -32,15 +32,18 @@ ACombatCharacter::ACombatCharacter(const FObjectInitializer& ObjectInitializer)
 void ACombatCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
-
+	
 	if (IsValid(CombatCharacterMovement))
 	{
-		CombatCharacterMovement->bWantsToCrouch = IsCrouching;
-		IsCrouching = false;
+		if (IsCrouching != CombatCharacterMovement->bWantsToCrouch)
+		{
+			CombatCharacterMovement->bWantsToCrouch = IsCrouching;
+		}
 	}
 	
 	UpdateCombatState(DeltaTime);
+
+	ResetInput();
 }
 
 void ACombatCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -50,37 +53,74 @@ void ACombatCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 void ACombatCharacter::Jump()
 {
-	Super::Jump();
-
-	auto currentState = StateController->GetCombatState();
-	if (currentState > ECombatState::StateMaxIndex_OnGround)
+	if (IsValid(CombatCharacterMovement))
 	{
-		if (IsValid(CombatCharacterMovement))
+		auto currentState = StateController->GetCombatState();
+		if (CombatCharacterMovement->IsMovingOnGround() && currentState <= ECombatState::StateMaxIndex_OnGround)
 		{
-			if (!CombatCharacterMovement->IsFalling())
-			{
-				StateController->SetCombatState(ECombatState::State_Jump);
-			}
-		}	
+			StateController->SetCombatState(ECombatState::State_Jump);
+			Super::Jump();
+			
+		}
+	}	
+}
+
+void ACombatCharacter::Move(const FVector2D& MovementVector)
+{
+	if (IsValid(CombatCharacterMovement))
+	{
+		auto currentState = StateController->GetCombatState();
+		if (CombatCharacterMovement->IsMovingOnGround() &&
+			(currentState == ECombatState::State_Idle || currentState == ECombatState::State_Run))
+		{
+			const FRotator rotation = GetControlRotation();
+			const FRotator yawRotation(0.0f, rotation.Yaw, 0.0f);
+
+			const FVector forwardVector = FRotationMatrix(yawRotation).GetUnitAxis(EAxis::X);
+			const FVector rightVector = FRotationMatrix(yawRotation).GetUnitAxis(EAxis::Y);
+			
+			AddMovementInput(forwardVector, MovementVector.Y);
+			AddMovementInput(rightVector, MovementVector.X);
+			StateController->SetCombatState(ECombatState::State_Run, false);
+		}
 	}
+}
+
+void ACombatCharacter::Look(const FVector2D& LookDirection)
+{
+	AddControllerPitchInput(LookDirection.Y);
+	AddControllerYawInput(LookDirection.X);
 }
 
 void ACombatCharacter::Crouch()
 {
 	if (IsValid(CombatCharacterMovement))
 	{
-		IsCrouching = true;
+		auto currentState = StateController->GetCombatState();
+		if (CombatCharacterMovement->IsMovingOnGround() && currentState <= ECombatState::StateMaxIndex_OnGround)
+		{
+			IsCrouching = true;
+		}
 	}
 }
 
-bool ACombatCharacter::IsLastInputExist() const
+void ACombatCharacter::Dash()
 {
-	const FVector lastInputVector = GetLastMovementInputVector();
-	if (lastInputVector.SquaredLength() > 0)
+	if (!CombatCharacterMovement->IsFalling())
 	{
-		return true;
+		StateController->SetCombatState(ECombatState::State_Dash);
+		IsDashing = true;
 	}
-	return false;
+	else
+	{
+		StateController->SetCombatState(ECombatState::State_AirDash);
+		IsDashing = true;
+	}
+}
+
+bool ACombatCharacter::IsMovementInputExist() const
+{
+	return !FMath::IsNearlyZero(GetLastMovementInputVector().SquaredLength());
 }
 
 void ACombatCharacter::BeginPlay()
@@ -96,20 +136,43 @@ void ACombatCharacter::UpdateCombatState(float DeltaTime)
 		{
 			auto currentState = StateController->GetCombatState();
 
-			// Ground to Air
+			// Ground
 			if (currentState <= ECombatState::StateMaxIndex_OnGround)
 			{
-				// TODO: check Fall
-				StateController->SetCombatState(IsLastInputExist() ? ECombatState::State_Run : ECombatState::State_Idle);
+				if (currentState == ECombatState::State_Run)
+				{
+					// Run to Idle
+					if (!IsMovementInputExist())
+					{
+						StateController->SetCombatState(ECombatState::State_Idle);
+					}
+				}
+				else if (currentState == ECombatState::State_Dash)
+				{
+					
+				}
+				else if (currentState == ECombatState::State_Land)
+				{
+					// Land To Idle or Run
+					StateController->SetCombatState( !IsMovementInputExist() ? ECombatState::State_Idle : ECombatState::State_Run );
+				}
+
 			}
-			// Air to Ground
+			// Air
 			else if (currentState > ECombatState::StateMaxIndex_OnGround && currentState <= ECombatState::StateMaxIndex_OnAir)
 			{
 				if (!CombatCharacterMovement->IsFalling())
 				{
+					// Air to Ground
 					StateController->SetCombatState(ECombatState::State_Land);
 				}
 			}
 		}
 	}
+}
+
+void ACombatCharacter::ResetInput()
+{
+	IsCrouching = false;
+	IsDashing = false;
 }

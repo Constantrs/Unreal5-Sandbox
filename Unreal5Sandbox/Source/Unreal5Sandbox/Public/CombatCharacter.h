@@ -8,6 +8,7 @@
 
 class USpringArmComponent;
 class UCameraComponent;
+class UInputComponent;
 class UCombatStateController;
 class UCombatCharacterMovementComponent;
 
@@ -21,13 +22,19 @@ public:
 	
 	virtual void Tick(float DeltaTime) override;
 	
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
 	virtual void Jump() override;
 
-	virtual void Crouch();
+	void Move(const FVector2D& MovementVector);
+
+	void Look(const FVector2D& LookDirection);
 	
-	bool IsLastInputExist() const;
+	void Crouch();
+
+	void Dash();
+
+	bool IsMovementInputExist() const;
 	
 	UCombatStateController* GetCombatStateController() const
 	{
@@ -55,6 +62,9 @@ protected:
 	virtual void BeginPlay() override;
 	
 	virtual void UpdateCombatState(float DeltaTime);
+
+	virtual void ResetInput();
 private:
 	bool IsCrouching = false;
+	bool IsDashing = false;
 };

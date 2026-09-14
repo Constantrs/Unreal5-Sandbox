@@ -33,16 +33,13 @@ void ACombatPlayerController::SetupInputComponent()
 void ACombatPlayerController::CharacterMove(const FInputActionValue& Value)
 {
 	const FVector2D movementVector = Value.Get<FVector2D>();
-	const FRotator rotation = GetControlRotation();
-	const FRotator yawRotation(0.0f, rotation.Yaw, 0.0f);
-
-	const FVector forwardVector = FRotationMatrix(yawRotation).GetUnitAxis(EAxis::X);
-	const FVector rightVector = FRotationMatrix(yawRotation).GetUnitAxis(EAxis::Y);
-
+	
 	if(auto controlledPawn = GetPawn<APawn>())
 	{
-		controlledPawn->AddMovementInput(forwardVector, movementVector.Y);
-		controlledPawn->AddMovementInput(rightVector, movementVector.X);
+		if (auto controlledCharacter = Cast<ACombatCharacter>(controlledPawn))
+		{
+			controlledCharacter->Move(movementVector);
+		}
 	}
 }
 
@@ -52,8 +49,10 @@ void ACombatPlayerController::CharacterLook(const FInputActionValue& Value)
 
 	if(auto controlledPawn = GetPawn<APawn>())
 	{
-		controlledPawn->AddControllerPitchInput(lookAxisVector.Y);
-		controlledPawn->AddControllerYawInput(lookAxisVector.X);
+		if (auto controlledCharacter = Cast<ACombatCharacter>(controlledPawn))
+		{
+			controlledCharacter->Look(lookAxisVector);
+		}
 	}
 }
 
@@ -75,6 +74,17 @@ void ACombatPlayerController::CharacterCrouch()
 		if (auto controlledCharacter = Cast<ACombatCharacter>(controlledPawn))
 		{
 			controlledCharacter->Crouch();
+		}
+	}
+}
+
+void ACombatPlayerController::CharacterDash()
+{
+	if(auto controlledPawn = GetPawn<APawn>())
+	{
+		if (auto controlledCharacter = Cast<ACombatCharacter>(controlledPawn))
+		{
+			controlledCharacter->Dash();
 		}
 	}
 }
@@ -131,8 +141,9 @@ void ACombatPlayerController::BindCombatInputActions()
 		enhancedInputComponent->BindAction(InputAction_Look, ETriggerEvent::Triggered, this, &ACombatPlayerController::CharacterLook);
 		enhancedInputComponent->BindAction(InputAction_Jump, ETriggerEvent::Triggered, this, &ACombatPlayerController::CharacterJump);
 		enhancedInputComponent->BindAction(InputAction_Crouch, ETriggerEvent::Triggered, this, &ACombatPlayerController::CharacterCrouch);
+		enhancedInputComponent->BindAction(InputAction_Dash, ETriggerEvent::Triggered, this, &ACombatPlayerController::CharacterDash);
 
-		enhancedInputComponent->BindAction(InputAction_Sprint, ETriggerEvent::Triggered, this, &ACombatPlayerController::SprintPressed);
+		enhancedInputComponent->BindAction(InputAction_Sprint, ETriggerEvent::Started, this, &ACombatPlayerController::SprintPressed);
 		enhancedInputComponent->BindAction(InputAction_Sprint, ETriggerEvent::Completed, this, &ACombatPlayerController::SprintReleased);
 		UE_LOG(LogTemp, Log, TEXT("<ACombatPlayerController::BindCombatInputActions> Bind Input Actions Succeeded!"));
 	}
