@@ -5,7 +5,12 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "CombatStateController.h"
+#include "CombatAnimInstance.h"
 #include "CombatCharacterMovementComponent.h"
+
+#ifdef WITH_EDITOR
+#include "DebugBlueprintFunctionLibrary.h"
+#endif
 
 ACombatCharacter::ACombatCharacter(const FObjectInitializer& ObjectInitializer)
 : Super(ObjectInitializer.SetDefaultSubobjectClass<UCombatCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -106,10 +111,24 @@ void ACombatCharacter::Crouch()
 
 void ACombatCharacter::Dash()
 {
+	if (IsDashing)
+	{
+		return;
+	}
+	
 	if (!CombatCharacterMovement->IsFalling())
 	{
-		StateController->SetCombatState(ECombatState::State_Dash);
-		IsDashing = true;
+		auto animInstance = Cast<UCombatAnimInstance>(GetMesh()->GetAnimInstance());
+		if (IsValid(DashAnim) && animInstance)
+		{
+			animInstance->Montage_Play(DashAnim);
+			FOnMontageEnded MontageEndedDelegate;
+			MontageEndedDelegate.BindUObject(this, &ACombatCharacter::OnDashMontageEnded);
+			animInstance->Montage_SetEndDelegate(MontageEndedDelegate, DashAnim);
+			
+			StateController->SetCombatState(ECombatState::State_Dash);
+			IsDashing = true;	
+		}
 	}
 	else
 	{
@@ -123,9 +142,19 @@ bool ACombatCharacter::IsMovementInputExist() const
 	return !FMath::IsNearlyZero(GetLastMovementInputVector().SquaredLength());
 }
 
+void ACombatCharacter::OnDashMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+#ifdef WITH_EDITOR
+	UDebugBlueprintFunctionLibrary::PrintScreenMessage(FColor::Green, FString("OnDashMontageEnded"));
+#endif
+	IsDashing = false;
+}
+
 void ACombatCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	//BindAnimEndDelegate();
 }
 
 void ACombatCharacter::UpdateCombatState(float DeltaTime)
@@ -149,7 +178,11 @@ void ACombatCharacter::UpdateCombatState(float DeltaTime)
 				}
 				else if (currentState == ECombatState::State_Dash)
 				{
-					
+					// Dash to Idie
+					if (!IsDashing)
+					{
+						StateController->SetCombatState(ECombatState::State_Idle);
+					}
 				}
 				else if (currentState == ECombatState::State_Land)
 				{
@@ -174,5 +207,19 @@ void ACombatCharacter::UpdateCombatState(float DeltaTime)
 void ACombatCharacter::ResetInput()
 {
 	IsCrouching = false;
-	IsDashing = false;
+}
+
+void ACombatCharacter::BindAnimEndDelegate()
+{
+	wpCombatAnimInstance = Cast<UCombatAnimInstance>(GetMesh()->GetAnimInstance());
+	auto animInstance = wpCombatAnimInstance.Get();
+	if (IsValid(animInstance))
+	{
+		if (IsValid(DashAnim))
+		{
+			FOnMontageEnded MontageEndedDelegate;
+			MontageEndedDelegate.BindUObject(this, &ACombatCharacter::OnDashMontageEnded);
+			animInstance->Montage_SetEndDelegate(MontageEndedDelegate, DashAnim);
+		}
+	}
 }

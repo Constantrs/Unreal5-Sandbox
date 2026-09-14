@@ -6,11 +6,13 @@
 #include "GameFramework/Character.h"
 #include "CombatCharacter.generated.h"
 
+class UAnimMontage;
 class USpringArmComponent;
 class UCameraComponent;
 class UInputComponent;
 class UCombatStateController;
 class UCombatCharacterMovementComponent;
+class UCombatAnimInstance;
 
 UCLASS( ClassGroup=(CombatSandbox) )
 class UNREAL5SANDBOX_API ACombatCharacter : public ACharacter
@@ -45,8 +47,13 @@ public:
 	{
 		return CombatCharacterMovement;
 	}
-	
+
+	UFUNCTION()
+	void OnDashMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 protected:
+	UPROPERTY(EditDefaultsOnly, Category = "CombatCharacter|AnimationMontages")
+	UAnimMontage* DashAnim;
+	
 	UPROPERTY(VisibleAnywhere, Category = "CombatCharacter|Component")
 	USpringArmComponent* CameraBoom;
 
@@ -58,12 +65,16 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "CombatCharacter|Component")
 	UCombatCharacterMovementComponent* CombatCharacterMovement;
+
+	TWeakObjectPtr<UCombatAnimInstance> wpCombatAnimInstance;
 	
 	virtual void BeginPlay() override;
 	
 	virtual void UpdateCombatState(float DeltaTime);
 
 	virtual void ResetInput();
+
+	virtual void BindAnimEndDelegate();
 private:
 	bool IsCrouching = false;
 	bool IsDashing = false;
