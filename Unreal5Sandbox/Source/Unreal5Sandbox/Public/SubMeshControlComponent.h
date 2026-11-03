@@ -6,7 +6,6 @@
 #include "Components/ActorComponent.h"
 #include "SubMeshControlComponent.generated.h"
 
-class UAnimInstance;
 class USceneComponent;
 class USkeletalMeshComponent;
 class USubMeshDataAsset;
@@ -38,9 +37,6 @@ public:
 	// Relative to the attach parent. Set Z=-96 for the current ActorPawn capsule.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Modular Mesh")
 	FTransform RootTransform = FTransform::Identity;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Modular Mesh")
-	TSubclassOf<UAnimInstance> LeaderAnimClass;
 	
 protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;

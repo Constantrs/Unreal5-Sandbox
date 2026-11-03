@@ -24,6 +24,11 @@ public:
 	void Move(const FVector2D& Input);
 	void Look(const FVector2D& Input);
 	void Jump();
+
+	// The caller must keep the loaded resources resident while this Pawn uses them.
+	UFUNCTION(BlueprintCallable, Category = "Modular Mesh")
+	bool InitializeCharacterMesh(USubMeshDataAsset* InDataAsset);
+	
 protected:
 	UPROPERTY(VisibleAnywhere, Category = "ActorPawn|Components")
 	TObjectPtr<UCapsuleComponent> Collision;
@@ -52,8 +57,8 @@ protected:
 	float GravityScale = 1.0f;
 	UPROPERTY(EditAnywhere, Category = "ActorPawn|Camera")
 	float LookSensitivity = 1.0f;
-
-	virtual void BeginPlay() override;
+	
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	
 private:
 	bool FindGround(FHitResult& Hit) const;

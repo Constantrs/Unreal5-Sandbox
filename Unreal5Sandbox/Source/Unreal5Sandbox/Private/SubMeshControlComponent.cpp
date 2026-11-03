@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "SubMeshControlComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -42,7 +39,13 @@ bool USubMeshControlComponent::InitializeFromDataAsset(USubMeshDataAsset* InData
         UE_LOG(LogDynamicSkeletalMesh, Warning, TEXT("DataAsset must contain at least one entry."));
         return false;
     }
-    TArray<FName> AssetNames;
+    
+    if (!InDataAsset->AnimClass.IsNull() && !InDataAsset->AnimClass.Get())
+    {
+        UE_LOG(LogDynamicSkeletalMesh, Warning, TEXT("Animation class must be loaded before initialization."));
+        return false;
+    }
+    
     for (int32 Index = 0; Index < subMeshNum; ++Index)
     {
         if (!IsValid(InDataAsset->SubMeshAssets[Index].SkeletonAsset.Get()))
@@ -75,7 +78,10 @@ bool USubMeshControlComponent::InitializeFromDataAsset(USubMeshDataAsset* InData
             Part->SetRelativeTransform(RootTransform);
             // The leader must refresh bones even when only followers are visible.
             Part->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
-            if (LeaderAnimClass) Part->SetAnimInstanceClass(LeaderAnimClass);
+            if (UClass* AnimClass = InDataAsset->AnimClass.Get())
+            {
+                Part->SetAnimInstanceClass(AnimClass);
+            }
         }
         else
         {

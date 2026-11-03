@@ -6,6 +6,8 @@
 #include "Engine/DataAsset.h"
 #include "SubMeshDataAsset.generated.h"
 
+class UAnimInstance;
+
 USTRUCT(BlueprintType)
 struct FSkeletonAssetData
 {
@@ -15,19 +17,26 @@ struct FSkeletonAssetData
 	FName AssetName = NAME_None;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Skeleton Asset")
-	TObjectPtr<USkeletalMesh> SkeletonAsset = nullptr;
+	TSoftObjectPtr<USkeletalMesh> SkeletonAsset;
 };
-
 
 /**
  * 
  */
 UCLASS()
-class UNREAL5SANDBOX_API USubMeshDataAsset : public UDataAsset
+class UNREAL5SANDBOX_API USubMeshDataAsset : public UPrimaryDataAsset
 {
 	GENERATED_BODY()
 public:
 	/** Index 0 is the leader; all remaining entries follow its bone transforms. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (TitleProperty = "AssetName"))
 	TArray<FSkeletonAssetData> SubMeshAssets;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	TSoftClassPtr<UAnimInstance> AnimClass;
+	
+	virtual FPrimaryAssetId GetPrimaryAssetId() const override
+	{
+		return FPrimaryAssetId(FPrimaryAssetType(TEXT("SubMeshDataAsset")), GetFName());
+	}
 };

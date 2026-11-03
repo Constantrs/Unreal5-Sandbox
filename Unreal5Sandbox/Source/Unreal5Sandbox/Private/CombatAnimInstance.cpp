@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "CombatAnimInstance.h"
 #include "CombatCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"

@@ -8,6 +8,7 @@
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "SubMeshControlComponent.h"
+#include "SubMeshDataAsset.h"
 
 AActorPawn::AActorPawn()
 {
@@ -19,7 +20,7 @@ AActorPawn::AActorPawn()
     Collision->InitCapsuleSize( CapsuleRadius, CapsuleHeight );
     Collision->SetCollisionProfileName(UCollisionProfile::Pawn_ProfileName);
 
-    // ActorComponent has no scene transform; generated meshes attach to Collision at BeginPlay.
+    // サブメッシュ動的に生成用コンポーネント
     SubMeshControlComponent = CreateDefaultSubobject<USubMeshControlComponent>(TEXT("SubMeshControlComponent"));
     
     SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
@@ -54,18 +55,27 @@ void AActorPawn::Jump()
     bJumpRequested = true;
 }
 
-void AActorPawn::BeginPlay()
+bool AActorPawn::InitializeCharacterMesh(USubMeshDataAsset* InDataAsset)
 {
-    Super::BeginPlay();
-
-    if (MeshAssetData && SubMeshControlComponent)
+    if (!IsValid(InDataAsset) || !SubMeshControlComponent)
     {
-        SubMeshControlComponent->RootTransform.SetLocation(FVector(0.0f, 0.0f, - CapsuleHeight));
-        if (!SubMeshControlComponent->InitializeFromDataAsset(MeshAssetData, Collision))
-        {
-            UE_LOG(LogTemp, Warning, TEXT("%s: Failed to initialize modular meshes."), *GetName());
-        }
+        return false;
     }
+
+    SubMeshControlComponent->RootTransform.SetLocation(FVector(0.0f, 0.0f, -CapsuleHeight));
+    if (!SubMeshControlComponent->InitializeFromDataAsset(InDataAsset, Collision))
+    {
+        return false;
+    }
+    MeshAssetData = InDataAsset;
+    return true;
+}
+
+void AActorPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    if (SubMeshControlComponent) SubMeshControlComponent->ClearGeneratedMeshes();
+    MeshAssetData = nullptr;
+    Super::EndPlay(EndPlayReason);
 }
 
 bool AActorPawn::FindGround(FHitResult& Hit) const
