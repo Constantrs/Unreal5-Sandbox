@@ -7,26 +7,26 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "SubMeshControlComponent.h"
 
 AActorPawn::AActorPawn()
 {
     PrimaryActorTick.bCanEverTick = true;
     bUseControllerRotationYaw = false;
 
-    Collision = CreateDefaultSubobject<UCapsuleComponent>(TEXT("Collision"));
+    Collision = CreateDefaultSubobject<UCapsuleComponent>(TEXT("CapsuleCollision"));
     SetRootComponent(Collision);
-    Collision->InitCapsuleSize(42.0f, 96.0f);
+    Collision->InitCapsuleSize( CapsuleRadius, CapsuleHeight );
     Collision->SetCollisionProfileName(UCollisionProfile::Pawn_ProfileName);
 
-    RootMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMesh"));
-    RootMesh->SetupAttachment(Collision);
-    RootMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
+    // ActorComponent has no scene transform; generated meshes attach to Collision at BeginPlay.
+    SubMeshControlComponent = CreateDefaultSubobject<USubMeshControlComponent>(TEXT("SubMeshControlComponent"));
+    
     SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
     SpringArm->SetupAttachment(Collision);
     SpringArm->TargetArmLength = 650.0f;
     SpringArm->bUsePawnControlRotation = true;
-
+    
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
     Camera->bUsePawnControlRotation = false;
@@ -54,6 +54,20 @@ void AActorPawn::Jump()
     bJumpRequested = true;
 }
 
+void AActorPawn::BeginPlay()
+{
+    Super::BeginPlay();
+
+    if (MeshAssetData && SubMeshControlComponent)
+    {
+        SubMeshControlComponent->RootTransform.SetLocation(FVector(0.0f, 0.0f, - CapsuleHeight));
+        if (!SubMeshControlComponent->InitializeFromDataAsset(MeshAssetData, Collision))
+        {
+            UE_LOG(LogTemp, Warning, TEXT("%s: Failed to initialize modular meshes."), *GetName());
+        }
+    }
+}
+
 bool AActorPawn::FindGround(FHitResult& Hit) const
 {
     const auto world = GetWorld();
@@ -61,7 +75,7 @@ bool AActorPawn::FindGround(FHitResult& Hit) const
     
     FCollisionQueryParams Params(SCENE_QUERY_STAT(ActorPawnGround), false, this);
     const FVector start = Collision->GetComponentLocation();
-    const FVector end = start - FVector(0, 0, 100.0f);
+    const FVector end = start - FVector(0, 0, RaycastDistance);
     
     // スフィアトレースで地面を取得
     const bool bHit = world->SweepSingleByChannel(
