@@ -18,9 +18,8 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void SetupInputComponent() override;
 
-	UPROPERTY(EditAnywhere, Category = "Controller|Input")
+	UPROPERTY(EditDefaultsOnly, Category = "Controller|Input")
 	bool InverseYAxis = true;
-	
 	UPROPERTY(EditDefaultsOnly, Category = "Controller|Input")
 	TObjectPtr<UInputMappingContext> PlayerMappingContext;
 	UPROPERTY(EditDefaultsOnly, Category = "Controller|Input")
@@ -30,8 +29,19 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Controller|Input")
 	TObjectPtr<UInputAction> JumpAction;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Controller|Debug Camera")
+	FName DebugTopDownCameraTag = TEXT("DebugTopDownCamera");
+	UPROPERTY(EditDefaultsOnly, Category = "Controller|Debug Camera", meta = (ClampMin = "0.0"))
+	float DebugCameraBlendTime = 0.3f;
 private:
 	void HandleMove(const FInputActionValue& Value);
 	void HandleLook(const FInputActionValue& Value);
 	void HandleJump(const FInputActionValue& Value);
+	
+	void FindDebugTopDownCamera();
+	void DebugUsePlayerCamera();
+	void DebugUseTopDownCamera();
+
+	UPROPERTY(Transient)
+	TWeakObjectPtr<AActor> DebugTopDownCamera;
 };

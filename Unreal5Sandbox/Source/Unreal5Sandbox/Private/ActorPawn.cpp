@@ -38,9 +38,30 @@ void AActorPawn::Move(const FVector2D& Input)
     if (!Controller) return;
 
     // Use camera/control yaw only: looking up must not make the pawn fly.
-    const FRotator Yaw(0.0f, Controller->GetControlRotation().Yaw, 0.0f);
-    AddMovementInput(Yaw.RotateVector(FVector::ForwardVector), Input.Y);
-    AddMovementInput(Yaw.RotateVector(FVector::RightVector), Input.X);
+
+    FRotator ViewRotation = Camera->GetComponentRotation();
+    FVector Forward = ViewRotation.Vector();
+    Forward.Z = 0.0f;
+    if (!Forward.Normalize(KINDA_SMALL_NUMBER))
+    {
+        // A vertical camera has no horizontal forward projection. Use its yaw
+        // to provide a stable movement basis instead of normalizing near-zero noise.
+        Forward = FRotator(0.0f, ViewRotation.Yaw, 0.0f).Vector();
+    }
+    const FVector Right = FVector::CrossProduct(FVector::UpVector, Forward);
+
+    // Face camera-forward for every movement direction, including strafing/backward.
+    // Yaw rotates around world Z in Unreal; preserve the current pitch and roll.
+    FRotator FacingRotation = GetActorRotation();
+    const float TargetYaw = Forward.Rotation().Yaw;
+    if (!FMath::IsNearlyZero(FMath::FindDeltaAngleDegrees(FacingRotation.Yaw, TargetYaw), 0.1f))
+    {
+        FacingRotation.Yaw = TargetYaw;
+        SetActorRotation(FacingRotation);
+    }
+    
+    AddMovementInput(Forward, Input.Y);
+    AddMovementInput(Right, Input.X);
 }
 
 void AActorPawn::Look(const FVector2D& Input)
@@ -63,6 +84,7 @@ bool AActorPawn::InitializeCharacterMesh(USubMeshDataAsset* InDataAsset)
     }
 
     SubMeshControlComponent->RootTransform.SetLocation(FVector(0.0f, 0.0f, -CapsuleHeight));
+    SubMeshControlComponent->RootTransform.SetRotation(FRotator(0.0f, -90.0f, 0.0f).Quaternion());
     if (!SubMeshControlComponent->InitializeFromDataAsset(InDataAsset, Collision))
     {
         return false;
@@ -85,14 +107,15 @@ bool AActorPawn::FindGround(FHitResult& Hit) const
     
     FCollisionQueryParams Params(SCENE_QUERY_STAT(ActorPawnGround), false, this);
     const FVector start = Collision->GetComponentLocation();
-    const FVector end = start - FVector(0, 0, RaycastDistance);
+    const FVector end = start - FVector(0, 0, Collision->GetScaledCapsuleHalfHeight());
+    const FQuat rotation = Collision->GetComponentQuat();
     
     // スフィアトレースで地面を取得
     const bool bHit = world->SweepSingleByChannel(
         Hit,
         start,
         end,
-        FQuat::Identity,
+        rotation,
         Collision->GetCollisionObjectType(),
         FCollisionShape::MakeSphere(Collision->GetScaledCapsuleRadius()), Params,
         FCollisionResponseParams(Collision->GetCollisionResponseToChannels()));
