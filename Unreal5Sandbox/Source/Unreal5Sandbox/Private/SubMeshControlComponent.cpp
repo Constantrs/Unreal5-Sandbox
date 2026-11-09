@@ -1,7 +1,7 @@
 #include "SubMeshControlComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "SubMeshDataAsset.h"
+#include "ActorDataAsset.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogDynamicSkeletalMesh, Log, All);
 
@@ -10,7 +10,7 @@ USubMeshControlComponent::USubMeshControlComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
-bool USubMeshControlComponent::InitializeFromDataAsset(USubMeshDataAsset* InDataAsset, USceneComponent* AttachParent)
+bool USubMeshControlComponent::InitializeFromDataAsset(UActorDataAsset* InDataAsset, USceneComponent* AttachParent)
 {
     AActor* Owner = GetOwner();
     if (!IsValid(Owner) || !GetWorld() || !GetWorld()->IsGameWorld()) return false;
@@ -33,13 +33,14 @@ bool USubMeshControlComponent::InitializeFromDataAsset(USubMeshDataAsset* InData
         }
     }
 
-    const int32 subMeshNum =  InDataAsset->SubMeshAssets.Num();
-    if (!IsValid(InDataAsset) || InDataAsset->SubMeshAssets.IsEmpty())
+
+    if (!IsValid(InDataAsset) || InDataAsset->SkeletonAssets.IsEmpty())
     {
         UE_LOG(LogDynamicSkeletalMesh, Warning, TEXT("DataAsset must contain at least one entry."));
         return false;
     }
-    
+
+    const int32 subMeshNum =  InDataAsset->SkeletonAssets.Num();
     if (!InDataAsset->AnimClass.IsNull() && !InDataAsset->AnimClass.Get())
     {
         UE_LOG(LogDynamicSkeletalMesh, Warning, TEXT("Animation class must be loaded before initialization."));
@@ -48,7 +49,7 @@ bool USubMeshControlComponent::InitializeFromDataAsset(USubMeshDataAsset* InData
     
     for (int32 Index = 0; Index < subMeshNum; ++Index)
     {
-        if (!IsValid(InDataAsset->SubMeshAssets[Index].SkeletonAsset.Get()))
+        if (!IsValid(InDataAsset->SkeletonAssets[Index].SkeletonAsset.Get()))
         {
             UE_LOG(LogDynamicSkeletalMesh, Warning, TEXT("Entry %d has no Skeletal Mesh asset."), Index);
             return false;
@@ -61,7 +62,7 @@ bool USubMeshControlComponent::InitializeFromDataAsset(USubMeshDataAsset* InData
 
     for (int32 Index = 0; Index < subMeshNum; ++Index)
     {
-        const FSkeletonAssetData& data = InDataAsset->SubMeshAssets[Index];
+        const FActorSkeletonAssetEntry& data = InDataAsset->SkeletonAssets[Index];
         // NewObject chooses a unique UObject name, even when asset names repeat.
         USkeletalMeshComponent* Part = NewObject<USkeletalMeshComponent>(Owner, data.AssetName, RF_Transient);
         Owner->AddInstanceComponent(Part);

@@ -26,8 +26,8 @@ public:
 	TSubclassOf<APawn> TargetPawn;
 protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Assets", meta = (AllowedTypes = "SubMeshDataAsset"))
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character Assets", meta = (AllowedTypes = "ActorDataAsset"))
 	FPrimaryAssetId MeshAssetId;
 
 private:

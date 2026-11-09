@@ -8,7 +8,8 @@
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "SubMeshControlComponent.h"
-#include "SubMeshDataAsset.h"
+#include "AnimMontageController.h"
+#include "ActorDataAsset.h"
 
 AActorPawn::AActorPawn()
 {
@@ -22,6 +23,9 @@ AActorPawn::AActorPawn()
 
     // サブメッシュ動的に生成用コンポーネント
     SubMeshControlComponent = CreateDefaultSubobject<USubMeshControlComponent>(TEXT("SubMeshControlComponent"));
+
+    // モンタージュ管理コンポーネント
+    AnimationMontageController = CreateDefaultSubobject<UAnimMontageController>(TEXT("AnimMontageController"));
     
     SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
     SpringArm->SetupAttachment(Collision);
@@ -76,7 +80,7 @@ void AActorPawn::Jump()
     bJumpRequested = true;
 }
 
-bool AActorPawn::InitializeCharacterMesh(USubMeshDataAsset* InDataAsset)
+bool AActorPawn::InitializeActorMesh(UActorDataAsset* InDataAsset)
 {
     if (!IsValid(InDataAsset) || !SubMeshControlComponent)
     {
@@ -90,11 +94,13 @@ bool AActorPawn::InitializeCharacterMesh(USubMeshDataAsset* InDataAsset)
         return false;
     }
     MeshAssetData = InDataAsset;
+    AnimationMontageController->SetTargetMesh( SubMeshControlComponent->GetRootMesh());
     return true;
 }
 
 void AActorPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+    if (AnimationMontageController) AnimationMontageController->SetTargetMesh(nullptr);
     if (SubMeshControlComponent) SubMeshControlComponent->ClearGeneratedMeshes();
     MeshAssetData = nullptr;
     Super::EndPlay(EndPlayReason);

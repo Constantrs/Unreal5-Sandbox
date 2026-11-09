@@ -1,24 +1,26 @@
 #include "AssetLoadSubsystem.h"
 
 #include "Animation/AnimInstance.h"
+#include "Animation/AnimMontage.h"
 #include "Engine/AssetManager.h"
 #include "Engine/SkeletalMesh.h"
-#include "SubMeshDataAsset.h"
+#include "ActorDataAsset.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogCharacterAssets, Log, All);
 
-USubMeshDataAsset* UAssetLoadSubsystem::AcquireCharacterAssetSync(FPrimaryAssetId AssetId)
+UActorDataAsset* UAssetLoadSubsystem::AcquireActorAssetSync(FPrimaryAssetId AssetId)
 {
 	check(IsInGameThread());
-    if (!AssetId.IsValid() || AssetId.PrimaryAssetType != FPrimaryAssetType(TEXT("SubMeshDataAsset")))
+    
+    if (!AssetId.IsValid() || AssetId.PrimaryAssetType != FPrimaryAssetType(TEXT("ActorDataAsset")))
     {
         UE_LOG(LogCharacterAssets, Warning, TEXT("Invalid character PrimaryAssetId: %s"), *AssetId.ToString());
         return nullptr;
     }
-    if (FLoadedCharacterAsset* Existing = LoadedAssets.Find(AssetId))
+    if (FLoadedActorAsset* Existing = LoadedAssets.Find(AssetId))
     {
         ++Existing->Users;
-        return Existing->SubMeshAsset.Get();
+        return Existing->ActorAssets.Get();
     }
 
     UAssetManager& manager = UAssetManager::Get();
@@ -30,16 +32,16 @@ USubMeshDataAsset* UAssetLoadSubsystem::AcquireCharacterAssetSync(FPrimaryAssetI
     }
 
     FStreamableManager& Streamable = UAssetManager::GetStreamableManager();
-    USubMeshDataAsset* Data = Cast<USubMeshDataAsset>(Streamable.LoadSynchronous(Path));
-    if (!Data || Data->GetPrimaryAssetId() != AssetId || Data->SubMeshAssets.IsEmpty())
+    UActorDataAsset* Data = Cast<UActorDataAsset>(Streamable.LoadSynchronous(Path));
+    if (!Data || Data->GetPrimaryAssetId() != AssetId || Data->SkeletonAssets.IsEmpty())
     {
         UE_LOG(LogCharacterAssets, Error, TEXT("Failed to load a valid, non-empty character definition: %s"), *AssetId.ToString());
         return nullptr;
     }
 
     // Keep the definition alive while its secondary assets are synchronously loaded.
-    LoadedAssets.Add(AssetId).SubMeshAsset = Data;
-    for (const FSkeletonAssetData& Entry : Data->SubMeshAssets)
+    LoadedAssets.Add(AssetId).ActorAssets = Data;
+    for (const FActorSkeletonAssetEntry& Entry : Data->SkeletonAssets)
     {
         USkeletalMesh* Mesh = Streamable.LoadSynchronous(Entry.SkeletonAsset);
         if (!Mesh)
@@ -66,10 +68,10 @@ USubMeshDataAsset* UAssetLoadSubsystem::AcquireCharacterAssetSync(FPrimaryAssetI
     return Data;
 }
 
-void UAssetLoadSubsystem::ReleaseCharacterAsset(FPrimaryAssetId AssetId)
+void UAssetLoadSubsystem::ReleaseActorAsset(FPrimaryAssetId AssetId)
 {
     check(IsInGameThread());
-    if (FLoadedCharacterAsset* Entry = LoadedAssets.Find(AssetId))
+    if (FLoadedActorAsset* Entry = LoadedAssets.Find(AssetId))
     {
         if (--Entry->Users <= 0) LoadedAssets.Remove(AssetId);
     }

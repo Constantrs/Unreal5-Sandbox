@@ -8,7 +8,7 @@
 
 class USceneComponent;
 class USkeletalMeshComponent;
-class USubMeshDataAsset;
+class UActorDataAsset;
 
 UCLASS(ClassGroup = (Rendering), meta = (BlueprintSpawnableComponent))
 class UNREAL5SANDBOX_API USubMeshControlComponent : public UActorComponent
@@ -20,8 +20,8 @@ public:
 
 	/** Runtime only. Null parent uses the owning actor's existing root component. */
 	UFUNCTION(BlueprintCallable, Category = "Modular Mesh", meta = (UnsafeDuringActorConstruction = "true"))
-	bool InitializeFromDataAsset(USubMeshDataAsset* InDataAsset, USceneComponent* AttachParent = nullptr);
-
+	bool InitializeFromDataAsset(UActorDataAsset* InDataAsset, USceneComponent* AttachParent = nullptr);
+	
 	UFUNCTION(BlueprintCallable, Category = "Modular Mesh")
 	void ClearGeneratedMeshes();
 

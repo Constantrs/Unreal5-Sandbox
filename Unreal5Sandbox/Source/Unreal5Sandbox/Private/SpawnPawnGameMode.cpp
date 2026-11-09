@@ -3,7 +3,7 @@
 #include "GameFramework/Controller.h"
 #include "GameFramework/PlayerController.h"
 #include "AssetLoadSubsystem.h"
-#include "SubMeshDataAsset.h"
+#include "ActorDataAsset.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogActorGameMode, Log, All);
 
@@ -32,7 +32,7 @@ void ASpawnPawnGameMode::RestartPlayer(AController* NewPlayer)
 
     // Capture the ID used by this request so its eventual release matches acquisition.
     const FPrimaryAssetId requestedId = MeshAssetId;
-    USubMeshDataAsset* data = subsystem->AcquireCharacterAssetSync(requestedId);
+    UActorDataAsset* data = subsystem->AcquireActorAssetSync(requestedId);
     if (!data) return;
 
     FActorSpawnParameters params;
@@ -42,10 +42,10 @@ void ASpawnPawnGameMode::RestartPlayer(AController* NewPlayer)
     AActorPawn* pawn = GetWorld()->SpawnActor<AActorPawn>(
         TargetPawn.Get(), start->GetActorLocation(), spawnRotation, params);
 
-    if (!IsValid(pawn) || !pawn->InitializeCharacterMesh(data))
+    if (!IsValid(pawn) || !pawn->InitializeActorMesh(data))
     {
         if (IsValid(pawn)) pawn->Destroy();
-        subsystem->ReleaseCharacterAsset(requestedId);
+        subsystem->ReleaseActorAsset(requestedId);
         UE_LOG(LogActorGameMode, Error, TEXT("Failed to spawn or initialize ActorPawn."));
         return;
     }
@@ -80,7 +80,7 @@ void ASpawnPawnGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
         if (IsValid(Pair.Key.Get()))
             Pair.Key->OnEndPlay.RemoveDynamic(this, &ASpawnPawnGameMode::HandlePawnEndPlay);
         if (UAssetLoadSubsystem* subsystem = AssetLoadSubsystem.Get())
-            subsystem->ReleaseCharacterAsset(Pair.Value);
+            subsystem->ReleaseActorAsset(Pair.Value);
     }
     PawnAssetIds.Empty();
     AssetLoadSubsystem.Reset();
@@ -94,6 +94,6 @@ void ASpawnPawnGameMode::HandlePawnEndPlay(AActor* Actor, EEndPlayReason::Type E
     if (Pawn && PawnAssetIds.RemoveAndCopyValue(Pawn, AssetId))
     {
         if (UAssetLoadSubsystem* subsystem = AssetLoadSubsystem.Get())
-            subsystem->ReleaseCharacterAsset(AssetId);
+            subsystem->ReleaseActorAsset(AssetId);
     }
 }

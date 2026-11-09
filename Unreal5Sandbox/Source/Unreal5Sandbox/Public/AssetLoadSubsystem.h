@@ -7,15 +7,15 @@
 #include "UObject/PrimaryAssetId.h"
 #include "AssetLoadSubsystem.generated.h"
 
-class USubMeshDataAsset;
+class UActorDataAsset;
 
 USTRUCT()
-struct FLoadedCharacterAsset
+struct FLoadedActorAsset
 {
 	GENERATED_BODY()
 
 	UPROPERTY(Transient)
-	TObjectPtr<USubMeshDataAsset> SubMeshAsset;
+	TObjectPtr<UActorDataAsset> ActorAssets;
 
 	// Soft references do not retain loaded objects. This cache does.
 	UPROPERTY(Transient)
@@ -34,14 +34,14 @@ class UNREAL5SANDBOX_API UAssetLoadSubsystem : public UGameInstanceSubsystem
 public:
 	// Game-thread only. Each successful acquisition must be released once.
 	UFUNCTION(BlueprintCallable, Category = "Character Assets")
-	USubMeshDataAsset* AcquireCharacterAssetSync(FPrimaryAssetId AssetId);
+	UActorDataAsset* AcquireActorAssetSync(FPrimaryAssetId AssetId);
 
 	UFUNCTION(BlueprintCallable, Category = "Character Assets")
-	void ReleaseCharacterAsset(FPrimaryAssetId AssetId);
+	void ReleaseActorAsset(FPrimaryAssetId AssetId);
 
 	virtual void Deinitialize() override;
 	
 private:
 	UPROPERTY(Transient)
-	TMap<FPrimaryAssetId, FLoadedCharacterAsset> LoadedAssets;
+	TMap<FPrimaryAssetId, FLoadedActorAsset> LoadedAssets;
 };
