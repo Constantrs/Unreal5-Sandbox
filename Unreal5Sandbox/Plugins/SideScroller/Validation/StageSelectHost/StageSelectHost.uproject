@@ -1,0 +1,14 @@
+{
+  "FileVersion": 3,
+  "EngineAssociation": "5.7",
+  "Modules": [
+    { "Name": "StageSelectHost", "Type": "Runtime", "LoadingPhase": "Default" }
+  ],
+  "AdditionalPluginDirectories": ["../../.."],
+  "Plugins": [
+    { "Name": "SideScroller", "Enabled": true },
+    { "Name": "StageSetExporter", "Enabled": false },
+    { "Name": "PythonScriptPlugin", "Enabled": true },
+    { "Name": "EditorScriptingUtilities", "Enabled": true }
+  ]
+}
