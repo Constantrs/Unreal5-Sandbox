@@ -15,7 +15,7 @@ bool USideScrollerStageSelectWidget::SetStageTable(UDataTable* InTable)
     SelectedIndex = INDEX_NONE;
     if (!IsValid(InTable) || InTable->GetRowStruct() != FSideScrollerStageRow::StaticStruct())
     {
-        SetStatusMessage(LOCTEXT("InvalidTable", "请在 PlayerController 中指定关卡 DataTable。"));
+        SetStatusMessage(LOCTEXT("InvalidTable", "PlayerControllerにステージのDataTableを設定してください"));
         RefreshPage();
         return false;
     }
@@ -34,7 +34,7 @@ bool USideScrollerStageSelectWidget::SetStageTable(UDataTable* InTable)
         }
     }
     SelectedIndex = Stages.IsEmpty() ? INDEX_NONE : 0;
-    SetStatusMessage(Stages.IsEmpty() ? LOCTEXT("Empty", "暂无可选择的关卡。") : FText::GetEmpty());
+    SetStatusMessage(Stages.IsEmpty() ? LOCTEXT("Empty", "選択できるステージがありません") : FText::GetEmpty());
     RefreshPage();
     return true;
 }
@@ -92,7 +92,7 @@ void USideScrollerStageSelectWidget::BuildWidgetTree()
     Background->SetContent(Layout);
 
     UTextBlock* Title = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("Title"));
-    Title->SetText(LOCTEXT("Title", "关卡选择"));
+    Title->SetText(LOCTEXT("Title", "ステージ選択"));
     FSlateFontInfo TitleFont = Title->GetFont();
     TitleFont.Size = 28;
     Title->SetFont(TitleFont);
@@ -117,7 +117,7 @@ void USideScrollerStageSelectWidget::BuildWidgetTree()
     Layout->AddChildToVerticalBox(PageLabel)->SetPadding(FMargin(0, 8, 0, 4));
 
     UTextBlock* Help = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("Help"));
-    Help->SetText(LOCTEXT("Help", "↑ / ↓ 选择（自动翻页）    回车 确认    Esc 退出游戏"));
+    Help->SetText(LOCTEXT("Help", "↑ / ↓ カーソル移動    Enter 決定    Esc 終了"));
     Layout->AddChildToVerticalBox(Help);
     StatusLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("StatusLabel"));
     StatusLabel->SetAutoWrapText(true);
@@ -144,7 +144,7 @@ void USideScrollerStageSelectWidget::RefreshPage()
             FText::FromString(bSelected ? TEXT(">  ") : TEXT("   ")), FText::FromName(Stages[Index].StageName)));
         Label->SetColorAndOpacity(FSlateColor(bSelected ? FLinearColor::Yellow : FLinearColor::White));
     }
-    PageLabel->SetText(FText::Format(LOCTEXT("Page", "第 {0} / {1} 页    共 {2} 关"),
+    PageLabel->SetText(FText::Format(LOCTEXT("Page", "現ページ {0} / {1}    ステージ総数 {2}"),
         FText::AsNumber(PageIndex == INDEX_NONE ? 0 : PageIndex + 1),
         FText::AsNumber(GetPageCount()), FText::AsNumber(Stages.Num())));
     StatusLabel->SetText(StatusMessage);

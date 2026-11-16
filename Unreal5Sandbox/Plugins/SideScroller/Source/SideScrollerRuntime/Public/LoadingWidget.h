@@ -5,8 +5,10 @@
 #include "LoadingWidget.generated.h"
 
 class UProgressBar;
+class UImage;
+class UTexture2D;
 
-/** Minimal native UMG loading UI: a single progress bar, no resource loading logic. */
+/** Native UMG loading UI: a full-viewport background and a progress bar. */
 UCLASS(BlueprintType, Blueprintable)
 class SIDESCROLLERRUNTIME_API ULoadingWidget : public UUserWidget
 {
@@ -19,10 +21,23 @@ public:
     UFUNCTION(BlueprintPure, Category = "Loading")
     float GetProgress() const { return Progress; }
 
+    UFUNCTION(BlueprintCallable, Category = "Loading|Appearance")
+    void SetBackgroundTexture(UTexture2D* InTexture);
+
 protected:
     virtual TSharedRef<SWidget> RebuildWidget() override;
+    virtual void SynchronizeProperties() override;
 
 private:
+    void UpdateBackground();
+
+    /** Stretched to fill the viewport. Without a texture, shows an opaque black background. */
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Loading|Appearance", meta = (AllowPrivateAccess = "true"))
+    TObjectPtr<UTexture2D> BackgroundTexture;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UImage> BackgroundImage;
+
     UPROPERTY(Transient)
     TObjectPtr<UProgressBar> ProgressBar;
 

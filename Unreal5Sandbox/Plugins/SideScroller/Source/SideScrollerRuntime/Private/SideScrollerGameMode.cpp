@@ -15,8 +15,10 @@ void ASideScrollerGameMode::BeginPlay()
     if (GetNetMode() == NM_DedicatedServer) return;
 
     // Defer UI creation until after BeginPlay and wait for the local player if needed.
-    GetWorldTimerManager().SetTimer(
-        WaitForPlayerTimer, this, &ASideScrollerGameMode::TryStartLoading, 0.1f, true);
+    // GetWorldTimerManager().SetTimer(
+    //     WaitForPlayerTimer, this, &ASideScrollerGameMode::TryStartLoading, 0.0f, true);
+
+    TryStartLoading();
 }
 
 void ASideScrollerGameMode::TryStartLoading()

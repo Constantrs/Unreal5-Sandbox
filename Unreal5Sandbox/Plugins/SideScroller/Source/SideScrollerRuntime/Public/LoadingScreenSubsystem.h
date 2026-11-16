@@ -49,7 +49,7 @@ public:
 
     /** Simulation duration in game-time seconds. Zero completes immediately and starts the fade. */
     UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category = "Loading|Debug", meta = (ClampMin = "0.0", Units = "s"))
-    float DebugLoadTime = 5.0f;
+    float DebugLoadTime = 2.0f;
 
     UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category = "Loading", meta = (ClampMin = "0.0", Units = "s"))
     float FadeOutTime = 0.4f;
