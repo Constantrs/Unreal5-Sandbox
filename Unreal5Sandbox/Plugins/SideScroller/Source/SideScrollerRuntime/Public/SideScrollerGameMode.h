@@ -11,12 +11,13 @@ class SIDESCROLLERRUNTIME_API ASideScrollerGameMode : public AGameMode
 {
     GENERATED_BODY()
 
+public:
+    ASideScrollerGameMode();
+
 protected:
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
     void TryStartLoading();
-
-    FTimerHandle WaitForPlayerTimer;
 };

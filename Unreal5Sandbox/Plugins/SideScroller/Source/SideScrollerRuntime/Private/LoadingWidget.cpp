@@ -17,7 +17,8 @@ void ULoadingWidget::UpdateBackground()
 {
     if (!BackgroundImage) return;
     BackgroundImage->SetBrushFromTexture(BackgroundTexture, false);
-    BackgroundImage->SetColorAndOpacity(BackgroundTexture ? FLinearColor::White : FLinearColor::Black);
+    FLinearColor defaultColor = FLinearColor(0.025f, 0.035f, 0.06f, 1.0f);
+    BackgroundImage->SetColorAndOpacity(BackgroundTexture ? FLinearColor::White : defaultColor);
 }
 
 void ULoadingWidget::SynchronizeProperties()

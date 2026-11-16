@@ -4,8 +4,14 @@
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "LoadingScreenSubsystem.h"
+#include "SideScrollerGameState.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSideScrollerGameMode, Log, All);
+
+ASideScrollerGameMode::ASideScrollerGameMode()
+{
+    GameStateClass = ASideScrollerGameState::StaticClass();
+}
 
 void ASideScrollerGameMode::BeginPlay()
 {
@@ -14,11 +20,11 @@ void ASideScrollerGameMode::BeginPlay()
     // GameMode runs only on the authority; this loading UI is for standalone play.
     if (GetNetMode() == NM_DedicatedServer) return;
 
+    TryStartLoading();
+    
     // Defer UI creation until after BeginPlay and wait for the local player if needed.
     // GetWorldTimerManager().SetTimer(
-    //     WaitForPlayerTimer, this, &ASideScrollerGameMode::TryStartLoading, 0.0f, true);
-
-    TryStartLoading();
+    //     WaitForPlayerTimer, this, &ASideScrollerGameMode::TryStartLoading, 0.1f, true);
 }
 
 void ASideScrollerGameMode::TryStartLoading()
@@ -31,9 +37,7 @@ void ASideScrollerGameMode::TryStartLoading()
 
         const ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer();
         if (!LocalPlayer || !LocalPlayer->ViewportClient) continue;
-
-        // Attempt once after the viewport is ready; configuration errors should not retry forever.
-        GetWorldTimerManager().ClearTimer(WaitForPlayerTimer);
+        
         ULoadingScreenSubsystem* Loading = World->GetSubsystem<ULoadingScreenSubsystem>();
         if (!Loading || !Loading->StartDebugLoading(PlayerController))
         {
@@ -45,6 +49,5 @@ void ASideScrollerGameMode::TryStartLoading()
 
 void ASideScrollerGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-    GetWorldTimerManager().ClearTimer(WaitForPlayerTimer);
     Super::EndPlay(EndPlayReason);
 }
