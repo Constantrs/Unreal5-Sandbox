@@ -8,6 +8,7 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Misc/PackageName.h"
 #include "SideScrollerStageSelectWidget.h"
+#include "SideScrollerCustomOptions.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSideScrollerStageSelect, Log, All);
 
@@ -69,9 +70,19 @@ void ASideScrollerStageSelectController::ConfirmStage()
         StageSelectWidget->SetStatusMessage(FText::FromString(FString::Printf(TEXT("找不到关卡：%s，请检查 LevelName 和打包地图列表。"), *Level)));
         return;
     }
+
+    FString Options;
+    FString OptionsError;
+    if (!SideScrollerCustomOptions::BuildCustomOptions(Selected.ObjectInfos, Options, OptionsError))
+    {
+        StageSelectWidget->SetStatusMessage(FText::FromString(OptionsError));
+        UE_LOG(LogSideScrollerStageSelect, Warning, TEXT("Cannot open stage: %s"), *OptionsError);
+        return;
+    }
+    
     bOpeningLevel = true;
     UE_LOG(LogSideScrollerStageSelect, Display, TEXT("Opening stage %s: %s"), *Selected.StageName.ToString(), *Level);
-    UGameplayStatics::OpenLevel(this, FName(*Level), true);
+    UGameplayStatics::OpenLevel(this, FName(*Level), true, Options);
 }
 
 void ASideScrollerStageSelectController::ExitGame()
