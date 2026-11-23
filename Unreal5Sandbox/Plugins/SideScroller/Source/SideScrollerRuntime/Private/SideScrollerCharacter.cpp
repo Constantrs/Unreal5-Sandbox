@@ -21,3 +21,19 @@ float ASideScrollerCharacter::GetHorizontalDirectionValue_Implementation() const
 {
     return ObjectComponent->GetHorizontalDirectionValue();
 }
+
+void ASideScrollerCharacter::SetRootSkeletalMeshComponent_Implementation(USkeletalMeshComponent* Component)
+{
+    ObjectComponent->SetRootSkeletalMeshComponent(Component);
+}
+
+USkeletalMeshComponent* ASideScrollerCharacter::GetRootSkeletalMeshComponent_Implementation() const
+{
+    return ObjectComponent->GetRootSkeletalMeshComponent();
+}
+
+void ASideScrollerCharacter::PostInitializeComponents()
+{
+    Super::PostInitializeComponents();
+    SetRootSkeletalMeshComponent_Implementation(GetMesh());
+}

@@ -31,6 +31,16 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Loading")
     bool StartDebugLoading(APlayerController* PlayerController = nullptr);
 
+    /** External work controls progress and completion; never auto-finishes at 100%. */
+    UFUNCTION(BlueprintCallable, Category = "Loading")
+    bool StartLoading(APlayerController* PlayerController = nullptr);
+
+    UFUNCTION(BlueprintCallable, Category = "Loading")
+    void SetLoadingProgress(float InProgress);
+
+    UFUNCTION(BlueprintCallable, Category = "Loading")
+    void CompleteLoading();
+    
     /** Removes UI and clears timers without reporting successful completion. */
     UFUNCTION(BlueprintCallable, Category = "Loading")
     void CancelDebugLoading();
@@ -57,7 +67,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Loading")
     TSubclassOf<ULoadingWidget> LoadingWidgetClass;
 
-    // Fires only after simulated loading AND fade/removal are finished.
+    // Fires only after successful completion AND fade/removal are finished.
     UPROPERTY(BlueprintAssignable, Category = "Loading")
     FDebugLoadingFinishedEvent OnLoadingFinished;
 
@@ -78,6 +88,7 @@ private:
     TWeakObjectPtr<APlayerController> OwningController;
 
     FTimerHandle UpdateTimer;
+    bool bDebugSimulation = false;
     EDebugLoadingPhase Phase = EDebugLoadingPhase::Idle;
     float Progress = 0.0f;
     float ActiveLoadTime = 0.0f;

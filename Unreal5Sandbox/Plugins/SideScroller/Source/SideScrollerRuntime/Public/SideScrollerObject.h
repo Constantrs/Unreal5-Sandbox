@@ -5,6 +5,8 @@
 #include "SideScrollerObjectTypes.h"
 #include "SideScrollerObject.generated.h"
 
+class USkeletalMeshComponent;
+
 UINTERFACE(BlueprintType, Blueprintable)
 class SIDESCROLLERRUNTIME_API USideScrollerObject : public UInterface
 {
@@ -24,4 +26,10 @@ public:
 
     UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "SideScroller|Object")
     float GetHorizontalDirectionValue() const;
+
+    UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "SideScroller|Object")
+    void SetRootSkeletalMeshComponent(USkeletalMeshComponent* Component);
+
+    UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "SideScroller|Object")
+    USkeletalMeshComponent* GetRootSkeletalMeshComponent() const;
 };

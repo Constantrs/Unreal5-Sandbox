@@ -32,3 +32,19 @@ float ASideScrollerPawn::GetHorizontalDirectionValue_Implementation() const
 {
     return ObjectComponent->GetHorizontalDirectionValue();
 }
+
+void ASideScrollerPawn::SetRootSkeletalMeshComponent_Implementation(USkeletalMeshComponent* Component)
+{
+    ObjectComponent->SetRootSkeletalMeshComponent(Component);
+}
+
+USkeletalMeshComponent* ASideScrollerPawn::GetRootSkeletalMeshComponent_Implementation() const
+{
+    return ObjectComponent->GetRootSkeletalMeshComponent();
+}
+
+void ASideScrollerPawn::PostInitializeComponents()
+{
+    Super::PostInitializeComponents();
+    SetRootSkeletalMeshComponent_Implementation(MeshComponent);
+}

@@ -18,9 +18,16 @@ bool ULoadingScreenSubsystem::DoesSupportWorldType(const EWorldType::Type WorldT
 
 bool ULoadingScreenSubsystem::StartDebugLoading(APlayerController* PlayerController)
 {
+    if (!FMath::IsFinite(DebugLoadTime) || DebugLoadTime < 0.0f || !StartLoading(PlayerController)) return false;
+    bDebugSimulation = true;
+    UpdateLoading();
+    return true;
+}
+
+bool ULoadingScreenSubsystem::StartLoading(APlayerController* PlayerController)
+{
     UWorld* World = GetWorld();
     if (!World || World->GetNetMode() == NM_DedicatedServer || !LoadingWidgetClass ||
-        !FMath::IsFinite(DebugLoadTime) || DebugLoadTime < 0.0f ||
         !FMath::IsFinite(FadeOutTime) || FadeOutTime < 0.0f)
     {
         UE_LOG(LogSideScrollerLoading, Warning, TEXT("Cannot start loading: invalid world, widget class or duration."));
@@ -29,7 +36,7 @@ bool ULoadingScreenSubsystem::StartDebugLoading(APlayerController* PlayerControl
     if (!PlayerController) PlayerController = World->GetFirstPlayerController();
     if (!IsValid(PlayerController) || PlayerController->GetWorld() != World || !PlayerController->IsLocalController())
     {
-        UE_LOG(LogSideScrollerLoading, Warning, TEXT("StartDebugLoading needs a local Controller in this World."));
+        UE_LOG(LogSideScrollerLoading, Warning, TEXT("StartLoading needs a local Controller in this World."));
         return false;
     }
 
@@ -52,8 +59,23 @@ bool ULoadingScreenSubsystem::StartDebugLoading(APlayerController* PlayerControl
     LoadingWidget->SetProgress(0.0f);
     LoadingWidget->SetRenderOpacity(1.0f);
     World->GetTimerManager().SetTimer(UpdateTimer, this, &ULoadingScreenSubsystem::UpdateLoading, 1.0f / 60.0f, true);
-    UpdateLoading();
     return true;
+}
+
+void ULoadingScreenSubsystem::SetLoadingProgress(float InProgress)
+{
+    if (Phase != EDebugLoadingPhase::Loading || !FMath::IsFinite(InProgress)) return;
+    Progress = FMath::Clamp(InProgress, 0.0f, 1.0f);
+    if (LoadingWidget) LoadingWidget->SetProgress(Progress);
+}
+
+void ULoadingScreenSubsystem::CompleteLoading()
+{
+    if (Phase != EDebugLoadingPhase::Loading) return;
+    SetLoadingProgress(1.0f);
+    Phase = EDebugLoadingPhase::FadingOut;
+    FadeStartedAt = GetWorld()->GetTimeSeconds();
+    UpdateLoading();
 }
 
 void ULoadingScreenSubsystem::UpdateLoading()
@@ -65,7 +87,7 @@ void ULoadingScreenSubsystem::UpdateLoading()
         return;
     }
     const double Now = World->GetTimeSeconds();
-    if (Phase == EDebugLoadingPhase::Loading)
+    if (Phase == EDebugLoadingPhase::Loading && bDebugSimulation)
     {
         Progress = ActiveLoadTime <= 0.0f ? 1.0f : FMath::Clamp(static_cast<float>((Now - LoadStartedAt) / ActiveLoadTime), 0.0f, 1.0f);
         LoadingWidget->SetProgress(Progress);
@@ -95,6 +117,7 @@ void ULoadingScreenSubsystem::FinishLoading()
 
 void ULoadingScreenSubsystem::CancelDebugLoading()
 {
+    bDebugSimulation = false;
     if (UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(UpdateTimer);
     if (LoadingWidget) LoadingWidget->RemoveFromParent();
     LoadingWidget = nullptr;

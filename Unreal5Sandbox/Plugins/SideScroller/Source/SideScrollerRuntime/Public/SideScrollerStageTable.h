@@ -2,7 +2,6 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
-#include "SideScrollerObjectTypes.h"
 #include "SideScrollerStageTable.generated.h"
 
 USTRUCT(BlueprintType)
@@ -15,9 +14,6 @@ struct SIDESCROLLERRUNTIME_API FSideScrollerStageRow : public FTableRowBase
     
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     FString LevelName;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    TArray<FSideScrollerObjectInfo> ObjectInfos;
 };
 
 UCLASS(BlueprintType)

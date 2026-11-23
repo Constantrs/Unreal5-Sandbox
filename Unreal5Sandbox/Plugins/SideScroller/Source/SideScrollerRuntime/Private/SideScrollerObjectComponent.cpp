@@ -2,6 +2,7 @@
 
 #include "Engine/World.h"
 #include "SideScrollerGameState.h"
+#include "Components/SkeletalMeshComponent.h"
 
 USideScrollerObjectComponent::USideScrollerObjectComponent()
 {
@@ -33,6 +34,34 @@ bool USideScrollerObjectComponent::RegisterWithGameState()
     if (!State || !State->RegisterObject(GetOwner())) return false;
     RegisteredGameState = State;
     return true;
+}
+
+void USideScrollerObjectComponent::SetRootSkeletalMeshComponent(USkeletalMeshComponent* Component)
+{
+    if (Component && (!IsValid(Component) || Component->GetOwner() != GetOwner()))
+    {
+        return;
+    }
+    
+    RootSkeletalMeshComponent = Component;
+    if (Component && InitialMesh)
+    {
+        Component->SetSkeletalMeshAsset(InitialMesh);
+    }
+}
+
+USkeletalMeshComponent* USideScrollerObjectComponent::GetRootSkeletalMeshComponent() const
+{
+    return IsValid(RootSkeletalMeshComponent) ? RootSkeletalMeshComponent.Get() : nullptr;
+}
+
+void USideScrollerObjectComponent::SetRootMeshAsset(USkeletalMesh* Mesh)
+{
+    InitialMesh = Mesh;
+    if (USkeletalMeshComponent* Component = GetRootSkeletalMeshComponent())
+    {
+        Component->SetSkeletalMeshAsset(Mesh);
+    }
 }
 
 void USideScrollerObjectComponent::BeginPlay()

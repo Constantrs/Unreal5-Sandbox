@@ -6,6 +6,8 @@
 #include "SideScrollerObjectComponent.generated.h"
 
 class ASideScrollerGameState;
+class USkeletalMeshComponent;
+class USkeletalMesh;
 
 UCLASS(ClassGroup = (SideScroller), meta = (BlueprintSpawnableComponent))
 class SIDESCROLLERRUNTIME_API USideScrollerObjectComponent : public UActorComponent
@@ -34,6 +36,14 @@ public:
     UFUNCTION(BlueprintCallable, Category = "SideScroller|Object")
     bool RegisterWithGameState();
 
+    UFUNCTION(BlueprintCallable, Category = "SideScroller|Object")
+    void SetRootSkeletalMeshComponent(USkeletalMeshComponent* Component);
+
+    UFUNCTION(BlueprintPure, Category = "SideScroller|Object")
+    USkeletalMeshComponent* GetRootSkeletalMeshComponent() const;
+    
+    void SetRootMeshAsset(USkeletalMesh* Mesh);
+    
 protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SideScroller|Object")
     ESideScrollerCategory Category = ESideScrollerCategory::Undefined;
@@ -47,4 +57,10 @@ protected:
 private:
     UPROPERTY(Transient)
     TWeakObjectPtr<ASideScrollerGameState> RegisteredGameState;
+
+    UPROPERTY(Transient)
+    TObjectPtr<USkeletalMeshComponent> RootSkeletalMeshComponent;
+
+    UPROPERTY(Transient)
+    TObjectPtr<USkeletalMesh> InitialMesh;
 };

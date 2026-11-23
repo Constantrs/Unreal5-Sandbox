@@ -8,7 +8,7 @@
 class USideScrollerObjectComponent;
 
 /** Uses ACharacter's existing capsule, skeletal mesh and movement components. */
-UCLASS(Blueprintable)
+UCLASS(Blueprintable, ClassGroup = (SideScroller))
 class SIDESCROLLERRUNTIME_API ASideScrollerCharacter : public ACharacter, public ISideScrollerObject
 {
     GENERATED_BODY()
@@ -19,7 +19,10 @@ public:
     virtual ESideScrollerCategory GetCategory_Implementation() const override;
     virtual ESideScrollerHorizontalDirection GetHorizontalDirection_Implementation() const override;
     virtual float GetHorizontalDirectionValue_Implementation() const override;
-
+    virtual void SetRootSkeletalMeshComponent_Implementation(USkeletalMeshComponent* Component) override;
+    virtual USkeletalMeshComponent* GetRootSkeletalMeshComponent_Implementation() const override;
+    virtual void PostInitializeComponents() override;
+    
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SideScroller|Components")
     TObjectPtr<USideScrollerObjectComponent> ObjectComponent;
 };
