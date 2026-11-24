@@ -8,33 +8,29 @@
 
 #define LOCTEXT_NAMESPACE "SideScrollerStageSelect"
 
-bool USideScrollerStageSelectWidget::SetStageTable(UDataTable* InTable)
+bool USideScrollerStageSelectWidget::SetStageConfigs(USideScrollerStageConfigAsset* InConfigs)
 {
-    StageTable = nullptr;
+    StageConfigs = nullptr;
     Stages.Reset();
     SelectedIndex = INDEX_NONE;
-    if (!IsValid(InTable) || InTable->GetRowStruct() != FSideScrollerStageRow::StaticStruct())
+    if (!IsValid(InConfigs))
     {
-        SetStatusMessage(LOCTEXT("InvalidTable", "PlayerControllerにステージのDataTableを設定してください"));
+        SetStatusMessage(LOCTEXT("InvalidTable", "PlayerControllerにSideScrollerStageConfigAssetを設定してください"));
         RefreshPage();
         return false;
     }
-
-    StageTable = InTable;
-    TArray<FName> RowNames = InTable->GetRowNames();
-    // A DataTable's map iteration order is not a reliable menu order.
-    RowNames.Sort([](FName Left, FName Right) { return Left.LexicalLess(Right); });
-    for (const FName RowName : RowNames)
+    FString Error;
+    if (!InConfigs->ValidateStageIds(Error))
     {
-        if (const FSideScrollerStageRow* Source = InTable->FindRow<FSideScrollerStageRow>(RowName, TEXT("StageSelect")))
-        {
-            FSideScrollerStageRow Row = *Source;
-            if (Row.StageName.IsNone()) Row.StageName = RowName;
-            Stages.Add(MoveTemp(Row));
-        }
+        SetStatusMessage(FText::FromString(Error));
+        RefreshPage();
+        return false;
     }
+    StageConfigs = InConfigs;
+    // Snapshot entries in authored order; never sort by StageId or display name.
+    Stages = InConfigs->Stages;
     SelectedIndex = Stages.IsEmpty() ? INDEX_NONE : 0;
-    SetStatusMessage(Stages.IsEmpty() ? LOCTEXT("Empty", "選択できるステージがありません") : FText::GetEmpty());
+    SetStatusMessage(Stages.IsEmpty() ? LOCTEXT("Empty",  "選択できるステージがありません") : FText::GetEmpty());
     RefreshPage();
     return true;
 }
@@ -47,12 +43,17 @@ void USideScrollerStageSelectWidget::MoveSelection(int32 Direction)
     RefreshPage();
 }
 
-bool USideScrollerStageSelectWidget::GetSelectedStage(FSideScrollerStageRow& OutStage) const
+bool USideScrollerStageSelectWidget::GetSelectedStage(FSideScrollerStageConfig& OutStage) const
 {
-    OutStage = FSideScrollerStageRow();
+    OutStage = FSideScrollerStageConfig();
     if (!Stages.IsValidIndex(SelectedIndex)) return false;
     OutStage = Stages[SelectedIndex];
     return true;
+}
+
+FName USideScrollerStageSelectWidget::GetSelectedStageId() const
+{
+    return StageIds.IsValidIndex(SelectedIndex) ? StageIds[SelectedIndex] : NAME_None;
 }
 
 int32 USideScrollerStageSelectWidget::GetPageCount() const
@@ -140,8 +141,8 @@ void USideScrollerStageSelectWidget::RefreshPage()
             continue;
         }
         const bool bSelected = Index == SelectedIndex;
-        Label->SetText(FText::Format(LOCTEXT("StageItem", "{0}{1}"),
-            FText::FromString(bSelected ? TEXT(">  ") : TEXT("   ")), FText::FromName(Stages[Index].StageName)));
+        Label->SetText(FText::Format(LOCTEXT("StageItem", "{0}{1}"), FText::FromString(bSelected ? TEXT(">  ") : TEXT("   ")),
+            FText::FromName(Stages[Index].StageId)));
         Label->SetColorAndOpacity(FSlateColor(bSelected ? FLinearColor::Yellow : FLinearColor::White));
     }
     PageLabel->SetText(FText::Format(LOCTEXT("Page", "現ページ {0} / {1}    ステージ総数 {2}"),

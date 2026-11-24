@@ -5,6 +5,7 @@
 #include "TimerManager.h"
 #include "SideScrollerObjectTypes.h"
 #include "SideScrollerEnemyReferenceAsset.h"
+#include "SideScrollerStageConfigAsset.h"
 #include "SideScrollerEnemySpawnRow.h"
 #include "SideScrollerGameMode.generated.h"
 
@@ -15,7 +16,7 @@ class USkeletalMesh;
 UENUM(BlueprintType)
 enum class ESideScrollerEnemyLoadState : uint8
 {
-    Idle, LoadingDefinitions, LoadingMeshes, Spawning, Ready, Failed
+    Idle, LoadingStageConfig, LoadingDefinitions, LoadingMeshes, Spawning, Ready, Failed
 };
 
 USTRUCT()
@@ -47,9 +48,12 @@ public:
     
 protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stage|Enemies")
+    TObjectPtr<USideScrollerStageConfigAsset> StageConfigs;
+    
+    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stage|Enemies")
     TObjectPtr<USideScrollerEnemyReferenceAsset> EnemyRefAssets;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stage|Enemies", meta = (RequiredAssetDataTags = "RowStructure=/Script/SideScrollerRuntime.SideScrollerEnemySpawnRow"))
+    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stage|Enemies")
     TObjectPtr<UDataTable> EnemySpawnTable;
     
     UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stage")
@@ -66,8 +70,10 @@ protected:
     
     virtual void OnEnemyLoadFailed(const FString& Reason);
 
+    void StartStageConfigLoading();
+    
     void StartEnemyLoading();
-
+    
     /** Starts one batch. Non-enemy entries are ignored. */
     void LoadAssetsFromScrollerObjectInfo(const TArray<FSideScrollerObjectInfo>& Infos);
     
@@ -76,7 +82,9 @@ protected:
     
 private:
     void TryStartLoading();
+    void OnStageConfigLoaded(uint32 RequestId);
     void OnDefinitionsLoaded(uint32 RequestId);
+    
     void OnMeshesLoaded(uint32 RequestId);
     void SpawnEnemies();
     void UpdateLoadingProgress();
@@ -85,6 +93,7 @@ private:
     
     FTimerHandle LoadProgressTimer;
     TSharedPtr<FStreamableHandle> DefinitionsHandle;
+    TSharedPtr<FStreamableHandle> StageConfigHandle;
     TSharedPtr<FStreamableHandle> MeshesHandle;
     uint32 LoadRequestId = 0;
     bool bEndingPlay = false;
@@ -100,5 +109,9 @@ private:
 
     ESideScrollerEnemyLoadState EnemyLoadState = ESideScrollerEnemyLoadState::Idle;
     FString EnemyLoadError;
+    FString StageOptionError;
+
+    UPROPERTY(Transient)
+    FSideScrollerStageConfig PendingStageConfig;
 };
 

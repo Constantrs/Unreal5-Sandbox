@@ -29,7 +29,7 @@ class SIDESCROLLERRUNTIME_API USideScrollerCharaDataAsset : public UPrimaryDataA
 {
 	GENERATED_BODY()
 public:
-	static FPrimaryAssetType PrimaryAssetType;
+	static const FPrimaryAssetType PrimaryAssetType;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "MeshAsset", meta = (TitleProperty = "AssetName"))
 	FCharaSkeletonAssetRef SkeletalAssetRef;

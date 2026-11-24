@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "SideScrollerStageTable.h"
+#include "SideScrollerStageConfigAsset.h"
 #include "SideScrollerStageSelectWidget.generated.h"
 
 class UTextBlock;
@@ -18,17 +18,20 @@ public:
     static constexpr int32 StagesPerPage = 20;
 
     UFUNCTION(BlueprintCallable, Category = "Stage Select")
-    bool SetStageTable(UDataTable* InTable);
+    bool SetStageConfigs(USideScrollerStageConfigAsset* InConfigs);
 
     UFUNCTION(BlueprintCallable, Category = "Stage Select")
     void MoveSelection(int32 Direction);
 
     UFUNCTION(BlueprintPure, Category = "Stage Select")
-    bool GetSelectedStage(FSideScrollerStageRow& OutStage) const;
+    bool GetSelectedStage(FSideScrollerStageConfig& OutStage) const;
+
+    UFUNCTION(BlueprintPure, Category = "Stage Select")
+    FName GetSelectedStageId() const;
 
     UFUNCTION(BlueprintPure, Category = "Stage Select")
     int32 GetSelectedIndex() const { return SelectedIndex; }
-
+    
     UFUNCTION(BlueprintPure, Category = "Stage Select")
     int32 GetStageCount() const { return Stages.Num(); }
 
@@ -48,10 +51,13 @@ private:
     void RefreshPage();
 
     UPROPERTY(Transient)
-    TObjectPtr<UDataTable> StageTable;
+    TObjectPtr<USideScrollerStageConfigAsset> StageConfigs;
 
     UPROPERTY(Transient)
-    TArray<FSideScrollerStageRow> Stages;
+    TArray<FSideScrollerStageConfig> Stages;
+
+    UPROPERTY(Transient)
+    TArray<FName> StageIds;
 
     UPROPERTY(Transient)
     TObjectPtr<UVerticalBox> StageList;

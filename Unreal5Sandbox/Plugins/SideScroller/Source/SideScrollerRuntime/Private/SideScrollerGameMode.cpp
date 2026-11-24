@@ -24,7 +24,7 @@ ASideScrollerGameMode::ASideScrollerGameMode()
 void ASideScrollerGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
 {
     Super::InitGame(MapName, Options, ErrorMessage);
-    StageId = FName(*UGameplayStatics::ParseOption(Options, TEXT("StageId")));
+    USideScrollerStageConfigAsset::ParseStageOptions(Options, StageId, StageOptionError);
     // StageId is diagnostic for now; each map's GameMode Blueprint supplies the table/catalog.
     UE_LOG(LogSideScrollerGameMode, Display, TEXT("StageId=%s"), *StageId.ToString());
 }
@@ -36,6 +36,39 @@ void ASideScrollerGameMode::OnEnemiesReady()
 void ASideScrollerGameMode::OnEnemyLoadFailed(const FString& Reason)
 {
     
+}
+
+void ASideScrollerGameMode::StartStageConfigLoading()
+{
+    if (EnemyLoadState != ESideScrollerEnemyLoadState::Idle || bEndingPlay) return;
+    if (!StageOptionError.IsEmpty())
+    {
+        FailEnemyLoading(StageOptionError);
+        return;
+    }
+    FString Error;
+    FName ResolvedId;
+    if (!StageConfigs || !StageConfigs->ResolveStage(StageId, GetWorld()->GetOutermost()->GetName(), ResolvedId, PendingStageConfig, Error))
+    {
+        FailEnemyLoading(StageConfigs ? Error : TEXT("Assign the shared StageConfigs asset in the GameMode Blueprint."));
+        return;
+    }
+    StageId = ResolvedId;
+    EnemyRefAssets = nullptr;
+    EnemySpawnTable = nullptr;
+    EnemyLoadState = ESideScrollerEnemyLoadState::LoadingStageConfig;
+    const uint32 RequestId = ++LoadRequestId;
+    TArray<FSoftObjectPath> Paths;
+    Paths.AddUnique(PendingStageConfig.EnemyAssets.ToSoftObjectPath());
+    Paths.AddUnique(PendingStageConfig.EnemySpawnTable.ToSoftObjectPath());
+    StageConfigHandle = UAssetManager::Get().GetStreamableManager().RequestAsyncLoad(Paths,
+        FStreamableDelegate::CreateWeakLambda(this, [this, RequestId] { OnStageConfigLoaded(RequestId); }));
+    if (!StageConfigHandle)
+    {
+        FailEnemyLoading(TEXT("Could not request the stage catalog/spawn table."));
+        return;
+    }
+    GetWorldTimerManager().SetTimer(LoadProgressTimer, this, &ASideScrollerGameMode::UpdateLoadingProgress, 0.05f, true);
 }
 
 void ASideScrollerGameMode::StartEnemyLoading()
@@ -157,10 +190,27 @@ void ASideScrollerGameMode::TryStartLoading()
         }
         if (!bUseDebugLoading)
         {
-            StartEnemyLoading();
+            StartStageConfigLoading();
         }
         return;
     }
+}
+
+void ASideScrollerGameMode::OnStageConfigLoaded(uint32 RequestId)
+{
+    if (bEndingPlay || RequestId != LoadRequestId || EnemyLoadState != ESideScrollerEnemyLoadState::LoadingStageConfig) return;
+    EnemyRefAssets = PendingStageConfig.EnemyAssets.Get();
+    EnemySpawnTable = PendingStageConfig.EnemySpawnTable.Get();
+    if (!EnemyRefAssets  || !EnemySpawnTable || EnemySpawnTable->GetRowStruct() != FSideScrollerEnemySpawnRow::StaticStruct())
+    {
+        FailEnemyLoading(TEXT("Stage catalog/spawn table failed to load, or spawn RowStruct is incorrect."));
+        return;
+    }
+    UE_LOG(LogSideScrollerGameMode, Display, TEXT("StageId=%s: EnemyAssets=%s, EnemySpawnTable=%s"),
+        *StageId.ToString(), *EnemyRefAssets ->GetName(), *EnemySpawnTable->GetName());
+    // Strong UPROPERTY references now own these assets; keep the handle until the overall batch ends.
+    EnemyLoadState = ESideScrollerEnemyLoadState::Idle;
+    StartEnemyLoading();
 }
 
 void ASideScrollerGameMode::OnDefinitionsLoaded(uint32 RequestId)
@@ -260,13 +310,17 @@ void ASideScrollerGameMode::SpawnEnemies()
 void ASideScrollerGameMode::UpdateLoadingProgress()
 {
     float Progress = 0.0f;
-    if (EnemyLoadState == ESideScrollerEnemyLoadState::LoadingDefinitions)
+    if (EnemyLoadState == ESideScrollerEnemyLoadState::LoadingStageConfig)
     {
-        Progress = 0.4f * (DefinitionsHandle ? DefinitionsHandle->GetProgress() : 0.0f);   
+        Progress = 0.15f * (StageConfigHandle ? StageConfigHandle->GetProgress() : 0.0f);
+    }
+    else if (EnemyLoadState == ESideScrollerEnemyLoadState::LoadingDefinitions)
+    {
+        Progress = 0.15f + 0.35f * (DefinitionsHandle ? DefinitionsHandle->GetProgress() : 0.0f);
     }
     else if (EnemyLoadState == ESideScrollerEnemyLoadState::LoadingMeshes)
     {
-        Progress = 0.4f + 0.5f * (MeshesHandle ? MeshesHandle->GetProgress() : 0.0f);
+        Progress = 0.5f + 0.4f * (MeshesHandle ? MeshesHandle->GetProgress() : 0.0f);
     }
     else if (EnemyLoadState == ESideScrollerEnemyLoadState::Spawning)
     {
@@ -296,7 +350,7 @@ void ASideScrollerGameMode::FailEnemyLoading(const FString& Reason)
 
 void ASideScrollerGameMode::ReleaseLoadHandles()
 {
-    for (TSharedPtr<FStreamableHandle>* Handle : { &DefinitionsHandle, &MeshesHandle })
+    for (TSharedPtr<FStreamableHandle>* Handle : { &StageConfigHandle, &DefinitionsHandle, &MeshesHandle })
     {
         if (Handle->IsValid())
         {

@@ -28,7 +28,7 @@ class SIDESCROLLERRUNTIME_API USideScrollerEnemyReferenceAsset : public UDataAss
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SideScroller|Enemy")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy")
 	TArray<FSideScrollerEnemyEntry> Enemies;
 
 	bool ValidateCatalog(FString& OutError) const;

@@ -1,13 +1,12 @@
 #include "SideScrollerStageSelectController.h"
 
 #include "Components/InputComponent.h"
-#include "Engine/DataTable.h"
-#include "Engine/Engine.h"
 #include "InputCoreTypes.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Misc/PackageName.h"
 #include "SideScrollerStageSelectWidget.h"
+#include "SideScrollerStageConfigAsset.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSideScrollerStageSelect, Log, All);
 
@@ -29,7 +28,7 @@ void ASideScrollerStageSelectController::BeginPlay()
         UE_LOG(LogSideScrollerStageSelect, Error, TEXT("Cannot create StageSelectWidget. Set its class in the Controller Blueprint."));
         return;
     }
-    StageSelectWidget->SetStageTable(StageTable);
+    StageSelectWidget->SetStageConfigs(StageConfigs);
     StageSelectWidget->AddToViewport();
     // Keyboard input is handled exclusively by this Controller, not UMG focus/navigation.
     SetInputMode(FInputModeGameOnly());
@@ -60,20 +59,28 @@ void ASideScrollerStageSelectController::SelectNext()
 
 void ASideScrollerStageSelectController::ConfirmStage()
 {
-    if (bOpeningLevel || !IsLocalController() || !StageSelectWidget) return;
-    FSideScrollerStageRow Selected;
-    if (!StageSelectWidget->GetSelectedStage(Selected)) return;
-    const FString Level = Selected.LevelName.TrimStartAndEnd();
+    if (bOpeningLevel || !IsLocalController() || !StageSelectWidget)
+    {
+        return;
+    }
+    FSideScrollerStageConfig Selected;
+    if (!StageSelectWidget->GetSelectedStage(Selected))
+    {
+        return;
+    }
+    const FString Level = Selected.Level.ToSoftObjectPath().GetLongPackageName();
     if (Level.IsEmpty() || (Level.StartsWith(TEXT("/")) && !FPackageName::DoesPackageExist(Level)))
     {
-        StageSelectWidget->SetStatusMessage(FText::FromString(FString::Printf(TEXT("ステージ見つかりませんでした：%s，LevelName とパッケージマップをチェックしてください。"), *Level)));
+        StageSelectWidget->SetStatusMessage(FText::FromString(FString::Printf(TEXT("ステージ見つかりませんでした：%s，Levelとパッケージマップをチェックしてください。"), *Level)));
         return;
     }
     
     bOpeningLevel = true;
-    UE_LOG(LogSideScrollerStageSelect, Display, TEXT("Opening stage %s: %s"), *Selected.StageName.ToString(), *Level);
-    //UGameplayStatics::OpenLevel(this, FName(*Level), true, Options);
-    UGameplayStatics::OpenLevel(this, FName(*Level), true);
+    UE_LOG(LogSideScrollerStageSelect, Display, TEXT("Opening stage %s: %s"), *Selected.StageId.ToString(), *Level);
+    
+    const FString Options = USideScrollerStageConfigAsset::BuildStageOptions(StageSelectWidget->GetSelectedStageId());
+    UGameplayStatics::OpenLevel(this, FName(*Level), true, Options);
+    //UGameplayStatics::OpenLevel(this, FName(*Level), true);
 }
 
 void ASideScrollerStageSelectController::ExitGame()

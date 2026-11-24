@@ -5,7 +5,7 @@
 #include "GameFramework/PlayerController.h"
 #include "SideScrollerStageSelectController.generated.h"
 
-class UDataTable;
+class USideScrollerStageConfigAsset;
 class USideScrollerStageSelectWidget;
 
 UCLASS(BlueprintType, Blueprintable)
@@ -21,8 +21,8 @@ protected:
     virtual void SetupInputComponent() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stage Select", meta = (RequiredAssetDataTags = "RowStructure=/Script/SideScrollerRuntime.SideScrollerStageRow"))
-    TObjectPtr<UDataTable> StageTable;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stage Select")
+    TObjectPtr<USideScrollerStageConfigAsset> StageConfigs;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stage Select")
     TSubclassOf<USideScrollerStageSelectWidget> StageSelectWidgetClass;
