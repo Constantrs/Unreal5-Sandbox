@@ -3,10 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameMode.h"
 #include "TimerManager.h"
-#include "SideScrollerObjectTypes.h"
-#include "SideScrollerEnemyReferenceAsset.h"
-#include "SideScrollerStageConfigAsset.h"
-#include "SideScrollerEnemySpawnRow.h"
+#include "SideScrollerAssetLoadSubsystem.h"
 #include "SideScrollerGameMode.generated.h"
 
 struct FStreamableHandle;
@@ -16,21 +13,11 @@ class USkeletalMesh;
 UENUM(BlueprintType)
 enum class ESideScrollerEnemyLoadState : uint8
 {
-    Idle, LoadingStageConfig, LoadingDefinitions, LoadingMeshes, Spawning, Ready, Failed
-};
-
-USTRUCT()
-struct FSideScrollerLoadedEnemy
-{
-    GENERATED_BODY()
-    UPROPERTY(Transient) FSideScrollerEnemyEntry Entry;
-    UPROPERTY(Transient) TObjectPtr<UClass> Class;
-    UPROPERTY(Transient) TObjectPtr<USideScrollerCharaDataAsset> Definition;
-    UPROPERTY(Transient) TObjectPtr<USkeletalMesh> Mesh;
+    Idle, LoadingStageConfig, LoadingDefinitions, LoadingMeshes, Spawning, Ready, Failed, Cancelled
 };
 
 /** Single-player stage bootstrap: async resources -> deferred enemy spawning -> loading fade. */
-UCLASS(Blueprintable,  ClassGroup = (SideScroller), meta = (PrioritizeCategories = "Stage"))
+UCLASS(Blueprintable, ClassGroup = (SideScroller), meta = (PrioritizeCategories = "SideScroller"))
 class SIDESCROLLERRUNTIME_API ASideScrollerGameMode : public AGameMode
 {
     GENERATED_BODY()
@@ -40,30 +27,30 @@ public:
 
     virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 
-    UFUNCTION(BlueprintPure, Category = "Stage|Enemies")
+    UFUNCTION(BlueprintPure, Category = "SideScroller|Enemies")
     ESideScrollerEnemyLoadState GetEnemyLoadState() const { return EnemyLoadState; }
 
-    UFUNCTION(BlueprintPure, Category = "Stage|Enemies")
+    UFUNCTION(BlueprintPure, Category = "SideScroller|Enemies")
     FString GetEnemyLoadError() const { return EnemyLoadError; }
     
 protected:
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stage|Enemies")
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SideScroller|Enemies")
     TObjectPtr<USideScrollerStageConfigAsset> StageConfigs;
     
-    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stage|Enemies")
+    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SideScroller|Enemies")
     TObjectPtr<USideScrollerEnemyReferenceAsset> EnemyRefAssets;
 
-    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stage|Enemies")
+    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SideScroller|Enemies")
     TObjectPtr<UDataTable> EnemySpawnTable;
     
-    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stage")
+    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SideScroller|Stage")
     TArray<FSideScrollerObjectInfo> ObjectInfos;
 
     /** Optional legacy UI simulation; skips all enemy loading/spawning. */
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Stage|Debug")
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SideScroller|Debug")
     bool bUseDebugLoading = false;
 
-    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Stage")
+    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SideScroller|Stage")
     FName StageId;
     
     virtual void OnEnemiesReady();

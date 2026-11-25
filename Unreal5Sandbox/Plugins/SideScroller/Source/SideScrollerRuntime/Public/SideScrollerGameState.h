@@ -15,7 +15,7 @@ struct FSideScrollerObjectList
 };
 
 /** Local world registry. This map is not replicated. */
-UCLASS(Blueprintable)
+UCLASS(Blueprintable, ClassGroup = (SideScroller), meta = (PrioritizeCategories = "SideScroller"))
 class SIDESCROLLERRUNTIME_API ASideScrollerGameState : public AGameState
 {
     GENERATED_BODY()
