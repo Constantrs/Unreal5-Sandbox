@@ -21,9 +21,6 @@ struct FCharaSkeletonAssetRef
 };
 
 
-/**
- * 
- */
 UCLASS(ClassGroup = (SideScroller))
 class SIDESCROLLERRUNTIME_API USideScrollerCharaDataAsset : public UPrimaryDataAsset
 {

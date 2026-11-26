@@ -6,6 +6,7 @@
 
 class UDataTable;
 class USideScrollerEnemyReferenceAsset;
+class USideScrollerTriggerRefAsset;
 
 USTRUCT(BlueprintType)
 struct SIDESCROLLERRUNTIME_API FSideScrollerStageConfig
@@ -19,8 +20,11 @@ struct SIDESCROLLERRUNTIME_API FSideScrollerStageConfig
 	TSoftObjectPtr<USideScrollerEnemyReferenceAsset> EnemyAssets;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	TSoftObjectPtr<UDataTable> EnemySpawnTable;
+	TSoftObjectPtr<USideScrollerTriggerRefAsset> TriggerAssets;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stage", meta = (DisplayName = "Object Spawn Table"))
+	TSoftObjectPtr<UDataTable> EnemySpawnTable;
+	
 	/** Menu destination and direct PIE lookup. Reading this reference does not load the map. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSoftObjectPtr<UWorld> Level;

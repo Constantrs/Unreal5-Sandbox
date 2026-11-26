@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "SideScrollerEnemyReferenceAsset.h"
+#include "SideScrollerTriggerRefAsset.h"
 #include "SideScrollerEnemySpawnRow.h"
 #include "SideScrollerStageConfigAsset.h"
 #include "SideScrollerAssetLoadSubsystem.generated.h"
@@ -21,6 +22,7 @@ USTRUCT(BlueprintType)
 struct SIDESCROLLERRUNTIME_API FSideScrollerLoadedEnemy
 {
 	GENERATED_BODY()
+	
 	UPROPERTY(Transient, BlueprintReadOnly)
 	FSideScrollerEnemyEntry Entry;
 
@@ -35,6 +37,18 @@ struct SIDESCROLLERRUNTIME_API FSideScrollerLoadedEnemy
 };
 
 USTRUCT(BlueprintType)
+struct SIDESCROLLERRUNTIME_API FSideScrollerLoadedTrigger
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(Transient, BlueprintReadOnly)
+	FSideScrollerTriggerEntry Entry;
+
+	UPROPERTY(Transient, BlueprintReadOnly)
+	TObjectPtr<UClass> Class;
+};
+
+USTRUCT(BlueprintType)
 struct SIDESCROLLERRUNTIME_API FSideScrollerStageLoadResult
 {
 	GENERATED_BODY()
@@ -45,6 +59,9 @@ struct SIDESCROLLERRUNTIME_API FSideScrollerStageLoadResult
 	TObjectPtr<USideScrollerEnemyReferenceAsset> EnemyAssets;
 
 	UPROPERTY(Transient, BlueprintReadOnly)
+	TObjectPtr<USideScrollerTriggerRefAsset> TriggerAssets;
+
+	UPROPERTY(Transient, BlueprintReadOnly)
 	TObjectPtr<UDataTable> EnemySpawnTable;
 
 	UPROPERTY(Transient, BlueprintReadOnly)
@@ -52,6 +69,9 @@ struct SIDESCROLLERRUNTIME_API FSideScrollerStageLoadResult
 
 	UPROPERTY(Transient, BlueprintReadOnly)
 	TMap<int32, FSideScrollerLoadedEnemy> Enemies;
+
+	UPROPERTY(Transient, BlueprintReadOnly)
+	TMap<int32, FSideScrollerLoadedTrigger> Triggers;
 };
 
 USTRUCT()
@@ -70,8 +90,11 @@ struct FSideScrollerAssetLoadBatch
 	ESideScrollerAssetLoadState State = ESideScrollerAssetLoadState::Queued;
 	FString Error;
 	TSharedPtr<FStreamableHandle> ConfigHandle;
+	TSharedPtr<FStreamableHandle> CatalogsHandle;
 	TSharedPtr<FStreamableHandle> DefinitionsHandle;
 	TSharedPtr<FStreamableHandle> MeshesHandle;
+	TSet<int32> EnemyIds;
+	TSet<int32> TriggerIds;
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FSideScrollerAssetBatchEvent, int32, RequestId);
@@ -88,10 +111,9 @@ public:
     UFUNCTION(BlueprintCallable, Category = "SideScroller|Assets")
     int32 LoadStageAssets(USideScrollerStageConfigAsset* Configs, FName StageId);
 
-    /** Optional entry point when small catalog/table resources are already loaded. */
-    UFUNCTION(BlueprintCallable, Category = "SideScroller|Assets")
-    int32 LoadEnemyAssets(USideScrollerEnemyReferenceAsset* Catalog, UDataTable* SpawnTable);
-
+	UFUNCTION(BlueprintCallable, Category = "SideScroller|Assets")
+	int32 LoadObjectAssets(USideScrollerEnemyReferenceAsset* EnemyCatalog, USideScrollerTriggerRefAsset* TriggerCatalog, UDataTable* SpawnTable);
+	
     UFUNCTION(BlueprintPure, Category = "SideScroller|Assets")
     ESideScrollerAssetLoadState GetLoadState(int32 RequestId) const;
 
@@ -129,10 +151,15 @@ protected:
 
 private:
     int32 CreateBatch();
-    void BeginStageLoad(int32 Id);
-    void OnConfigLoaded(int32 Id);
-    void BeginEnemyLoad(int32 Id);
-    void OnDefinitionsLoaded(int32 Id);
+	void BeginStageLoad(int32 Id);
+	void OnConfigLoaded(int32 Id);
+	
+	void BeginObjectLoad(int32 Id);
+	void OnCatalogsLoaded(int32 Id);
+	
+	void BeginDefinitionsLoad(int32 Id);
+	void OnDefinitionsLoaded(int32 Id);
+	
     void OnMeshesLoaded(int32 Id);
     void CompleteBatch(int32 Id);
     void FailBatch(int32 Id, const FString& Reason);

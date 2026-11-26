@@ -7,9 +7,10 @@ UENUM(BlueprintType)
 enum class ESideScrollerCategory : uint8
 {
     Undefined = 0   UMETA(Hidden),
-    PL = 1      UMETA(DisplayName="Player"),
-    EM = 2       UMETA(DisplayName="Enemy"),
-    GMK = 3     UMETA(DisplayName="Gimmick")
+    PL = 1          UMETA(DisplayName="Player"),
+    EM = 2          UMETA(DisplayName="Enemy"),
+    GMK = 3         UMETA(DisplayName="Gimmick"),
+    TGR = 4         UMETA(DisplayName = "Trigger")
 };
 
 UENUM(BlueprintType)

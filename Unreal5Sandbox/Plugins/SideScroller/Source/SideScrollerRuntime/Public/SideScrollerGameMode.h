@@ -34,9 +34,12 @@ public:
 
     virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 
-    UFUNCTION(BlueprintPure, Category = "SideScroller|Enemies")
-    ESideScrollerLoadState GetEnemyLoadState() const;
+    UFUNCTION(BlueprintPure, Category = "SideScroller")
+    ESideScrollerLoadState GetLoadState() const;
 
+    UFUNCTION(BlueprintPure, Category = "ideScroller|Stage")
+    bool IsStageReady() const { return !bEndingPlay && LoadState == ESideScrollerLoadState::Ready; }
+    
     UFUNCTION(BlueprintPure, Category = "SideScroller|Enemies")
     FString GetEnemyLoadError() const { return EnemyLoadError; }
     
@@ -48,14 +51,17 @@ public:
     bool ReleaseStageAssets();
 
 protected:
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SideScroller|Enemies")
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SideScroller|Stage")
     TObjectPtr<USideScrollerStageConfigAsset> StageConfigs;
     
-    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SideScroller|Enemies")
+    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SideScroller|Reference")
     TWeakObjectPtr<USideScrollerEnemyReferenceAsset> EnemyRefAssets;
 
-    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SideScroller|Enemies")
-    TWeakObjectPtr<UDataTable> EnemySpawnTable;
+    UPROPERTY(Transient, VisibleInstanceOnly, BlueprintReadOnly, Category = "Stage|Reference")
+    TWeakObjectPtr<USideScrollerTriggerRefAsset> TriggerRefAssets;
+
+    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SideScroller|Object")
+    TWeakObjectPtr<UDataTable> ObjectSpawnTable;
     
     UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SideScroller|Stage")
     TArray<FSideScrollerObjectInfo> ObjectInfos;
@@ -67,12 +73,11 @@ protected:
     UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SideScroller|Stage")
     FName StageId;
     
-    virtual void OnEnemiesReady();
+    virtual void OnObjectsReady();
+    virtual void OnObjectsLoadFailed(const FString& Reason);
     
-    virtual void OnEnemyLoadFailed(const FString& Reason);
-
     void StartStageConfigLoading();
-    void StartEnemyLoading(USideScrollerEnemyReferenceAsset* Catalog, UDataTable* Table);
+    void StartObjectLoading(USideScrollerEnemyReferenceAsset* EnemyCatalog, USideScrollerTriggerRefAsset* TriggerCatalog, UDataTable* Table);
     
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -81,9 +86,9 @@ private:
     USideScrollerAssetLoadSubsystem* BindAssetLoader();
     
     void TryStartLoading();
-    void SpawnEnemies();
+    void SpawnObjects();
     void UpdateLoadingProgress();
-    void FailEnemyLoading(const FString& Reason);
+    void FailObjectsLoading(const FString& Reason);
     void ClearAssetRequest();
     
     UFUNCTION()
@@ -98,15 +103,15 @@ private:
     FTimerHandle LoadProgressTimer;
     int32 AssetLoadRequestId = 0;
     bool bEndingPlay = false;
-    ESideScrollerLoadState EnemyLoadState = ESideScrollerLoadState::Uninitialized;
+    ESideScrollerLoadState LoadState = ESideScrollerLoadState::Uninitialized;
     FString EnemyLoadError;
     FString StageOptionError;
 
     // Only retained while synchronous spawn/Blueprint initialization is executing.
     UPROPERTY(Transient)
     FSideScrollerStageLoadResult SpawnData;
-
+    
     UPROPERTY(Transient)
-    TArray<TWeakObjectPtr<AActor>> SpawnedEnemies;
+    TArray<TWeakObjectPtr<AActor>> SpawnedObjects;
 };
 

@@ -31,13 +31,18 @@ int32 USideScrollerAssetLoadSubsystem::LoadStageAssets(USideScrollerStageConfigA
 	return Id;
 }
 
-int32 USideScrollerAssetLoadSubsystem::LoadEnemyAssets(USideScrollerEnemyReferenceAsset* Catalog, UDataTable* SpawnTable)
+int32 USideScrollerAssetLoadSubsystem::LoadObjectAssets(USideScrollerEnemyReferenceAsset* EnemyCatalog,
+    USideScrollerTriggerRefAsset* TriggerCatalog, UDataTable* SpawnTable)
 {
     const int32 Id = CreateBatch();
-    if (!Id) return 0;
-    Batches[Id].Result.EnemyAssets = Catalog;
+    if (!Id)
+    {
+        return 0;
+    }
+    Batches[Id].Result.EnemyAssets = EnemyCatalog;
+    Batches[Id].Result.TriggerAssets = TriggerCatalog;
     Batches[Id].Result.EnemySpawnTable = SpawnTable;
-    GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this, Id] { BeginEnemyLoad(Id); }));
+    GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this, Id] { BeginObjectLoad(Id); }));
     return Id;
 }
 
@@ -71,13 +76,13 @@ void USideScrollerAssetLoadSubsystem::OnConfigLoaded(int32 Id)
     Batch->Result.EnemySpawnTable = Batch->PendingConfig.EnemySpawnTable.Get();
     if (!Batch->Result.EnemyAssets || !Batch->Result.EnemySpawnTable)
     {
-        FailBatch(Id, TEXT("Stage catalog/spawn table failed to load."));
+        FailBatch(Id, TEXT("Object Spawn Table failed to load."));
         return;
     }
-    BeginEnemyLoad(Id);
+    BeginObjectLoad(Id);
 }
 
-void USideScrollerAssetLoadSubsystem::BeginEnemyLoad(int32 Id)
+void USideScrollerAssetLoadSubsystem::BeginObjectLoad(int32 Id)
 {
     FSideScrollerAssetLoadBatch* Batch = Batches.Find(Id);
     if (bShuttingDown || !Batch || (Batch->State != ESideScrollerAssetLoadState::Queued &&
@@ -90,31 +95,99 @@ void USideScrollerAssetLoadSubsystem::BeginEnemyLoad(int32 Id)
     }
     TArray<FName> Names = Table->GetRowNames();
     Names.Sort(FNameLexicalLess());
-    TSet<int32> EnemyIds;
     for (FName Name : Names)
     {
         const FSideScrollerEnemySpawnRow* Row = Table->FindRow<FSideScrollerEnemySpawnRow>(Name, TEXT("Enemy loading"));
-        if (!Row || Row->ObjectInfo.Category != ESideScrollerCategory::EM) continue;
+        if (!Row || (Row->ObjectInfo.Category != ESideScrollerCategory::EM && Row->ObjectInfo.Category != ESideScrollerCategory::TGR))
+        {
+            continue;
+        }
+        
         if (!Row->Transform.IsValid())
         {
             FailBatch(Id, FString::Printf(TEXT("Invalid transform in spawn row %s."), *Name.ToString()));
             return;
         }
         Batch->Result.SpawnRows.Add(*Row);
-        EnemyIds.Add(Row->ObjectInfo.Id);
+        if (Row->ObjectInfo.Category == ESideScrollerCategory::EM)
+        {
+            Batch->EnemyIds.Add(Row->ObjectInfo.Id);
+        }
+        else
+        {
+            Batch->TriggerIds.Add(Row->ObjectInfo.Id);
+        }
     }
-    if (EnemyIds.IsEmpty()) { CompleteBatch(Id); return; }
+    if (Batch->Result.SpawnRows.IsEmpty())
+    {
+        CompleteBatch(Id); return;
+    }
+    
+    // Only catalogs actually required by this table are loaded. Unused catalogs may be absent.
+    if (Batch->Configs)
+    {
+        TArray<FSoftObjectPath> Paths;
+        if (!Batch->EnemyIds.IsEmpty())
+        {
+            if (Batch->PendingConfig.EnemyAssets.IsNull()) { FailBatch(Id, TEXT("Enemy rows require EnemyAssets.")); return; }
+            Paths.AddUnique(Batch->PendingConfig.EnemyAssets.ToSoftObjectPath());
+        }
+        if (!Batch->TriggerIds.IsEmpty())
+        {
+            if (Batch->PendingConfig.TriggerAssets.IsNull()) { FailBatch(Id, TEXT("Trigger rows require TriggerAssets.")); return; }
+            Paths.AddUnique(Batch->PendingConfig.TriggerAssets.ToSoftObjectPath());
+        }
+        Batch->CatalogsHandle = UAssetManager::Get().GetStreamableManager().RequestAsyncLoad(Paths,
+            FStreamableDelegate::CreateWeakLambda(this, [this, Id] { OnCatalogsLoaded(Id); }));
+        if (!Batch->CatalogsHandle)
+        {
+            FailBatch(Id, TEXT("Could not request object catalogs."));
+            return;
+        }
+    }
+    BeginDefinitionsLoad(Id);
+}
+
+void USideScrollerAssetLoadSubsystem::OnCatalogsLoaded(int32 Id)
+{
+    FSideScrollerAssetLoadBatch* Batch = Batches.Find(Id);
+    if (bShuttingDown || !Batch || Batch->State != ESideScrollerAssetLoadState::LoadingStageConfig)
+    {
+        return;
+    }
+    if (!Batch->EnemyIds.IsEmpty())
+    {
+        Batch->Result.EnemyAssets = Batch->PendingConfig.EnemyAssets.Get();
+    }
+    if (!Batch->TriggerIds.IsEmpty())
+    {
+        Batch->Result.TriggerAssets = Batch->PendingConfig.TriggerAssets.Get();
+    }
+    BeginDefinitionsLoad(Id);
+}
+
+void USideScrollerAssetLoadSubsystem::BeginDefinitionsLoad(int32 Id)
+{
+    FSideScrollerAssetLoadBatch* Batch = Batches.Find(Id);
+    if (bShuttingDown || !Batch || (Batch->State != ESideScrollerAssetLoadState::Queued &&
+        Batch->State != ESideScrollerAssetLoadState::LoadingStageConfig)) return;
     FString Error;
     USideScrollerEnemyReferenceAsset* Catalog = Batch->Result.EnemyAssets;
-    if (!Catalog || !Catalog->ValidateCatalog(Error))
+    if (!Batch->EnemyIds.IsEmpty() && (!Catalog || !Catalog->ValidateCatalog(Error)))
     {
         FailBatch(Id, Catalog ? Error : TEXT("Assign EnemyAssets catalog."));
+        return;
+    }
+    USideScrollerTriggerRefAsset* TriggerCatalog = Batch->Result.TriggerAssets;
+    if (!Batch->TriggerIds.IsEmpty() && (!TriggerCatalog || !TriggerCatalog->ValidateCatalog(Error)))
+    {
+        FailBatch(Id, TriggerCatalog ? Error : TEXT("Assign TriggerAssets catalog."));
         return;
     }
     Batch->State = ESideScrollerAssetLoadState::LoadingDefinitions;
     TArray<FSoftObjectPath> Paths;
     UAssetManager& Manager = UAssetManager::Get();
-    for (int32 EnemyId : EnemyIds)
+    for (int32 EnemyId : Batch->EnemyIds)
     {
         const FSideScrollerEnemyEntry* Entry = Catalog->FindEnemy(EnemyId);
         if (!Entry) { FailBatch(Id, FString::Printf(TEXT("Enemy Id=%d was not found."), EnemyId)); return; }
@@ -128,9 +201,22 @@ void USideScrollerAssetLoadSubsystem::BeginEnemyLoad(int32 Id)
         Paths.AddUnique(Path);
         Paths.AddUnique(Entry->EnemyClass.ToSoftObjectPath());
     }
+    for (int32 TriggerId : Batch->TriggerIds)
+    {
+        const FSideScrollerTriggerEntry* Entry = TriggerCatalog->FindTrigger(TriggerId);
+        if (!Entry)
+        {
+            FailBatch(Id, FString::Printf(TEXT("Trigger Id=%d was not found."), TriggerId)); return;
+        }
+        Batch->Result.Triggers.Add(TriggerId).Entry = *Entry;
+        Paths.AddUnique(Entry->TriggerClass.ToSoftObjectPath());
+    }
     Batch->DefinitionsHandle = Manager.GetStreamableManager().RequestAsyncLoad(Paths,
         FStreamableDelegate::CreateWeakLambda(this, [this, Id] { OnDefinitionsLoaded(Id); }));
-    if (!Batch->DefinitionsHandle) FailBatch(Id, TEXT("Could not request enemy definitions/classes."));
+    if (!Batch->DefinitionsHandle)
+    {
+        FailBatch(Id, TEXT("Could not request object definitions/classes."));
+    }
 }
 
 void USideScrollerAssetLoadSubsystem::OnDefinitionsLoaded(int32 Id)
@@ -153,6 +239,19 @@ void USideScrollerAssetLoadSubsystem::OnDefinitionsLoaded(int32 Id)
         }
         Paths.AddUnique(Loaded.Definition->SkeletalAssetRef.SkeletonAsset.ToSoftObjectPath());
     }
+    for (auto& Pair : Batch->Result.Triggers)
+    {
+        FSideScrollerLoadedTrigger& Loaded = Pair.Value;
+        Loaded.Class = Loaded.Entry.TriggerClass.Get();
+        if (!Loaded.Class || !Loaded.Class->IsChildOf(AActor::StaticClass()) ||
+            Loaded.Class->HasAnyClassFlags(CLASS_Abstract | CLASS_Deprecated | CLASS_NewerVersionExists) ||
+            !Loaded.Class->ImplementsInterface(USideScrollerObject::StaticClass()))
+        {
+            FailBatch(Id, FString::Printf(TEXT("Trigger Id=%d: invalid class or missing SideScrollerObject interface."), Pair.Key));
+            return;
+        }
+    }
+    if (Paths.IsEmpty()) { CompleteBatch(Id); return; } // Trigger-only batches do not request meshes.
     Batch->State = ESideScrollerAssetLoadState::LoadingMeshes;
     Batch->MeshesHandle = UAssetManager::Get().GetStreamableManager().RequestAsyncLoad(Paths,
         FStreamableDelegate::CreateWeakLambda(this, [this, Id] { OnMeshesLoaded(Id); }));
@@ -174,7 +273,10 @@ void USideScrollerAssetLoadSubsystem::OnMeshesLoaded(int32 Id)
 void USideScrollerAssetLoadSubsystem::CompleteBatch(int32 Id)
 {
     FSideScrollerAssetLoadBatch* Batch = Batches.Find(Id);
-    if (!Batch || bShuttingDown) return;
+    if (!Batch || bShuttingDown)
+    {
+        return;
+    }
     Batch->State = ESideScrollerAssetLoadState::Ready;
     // All handles stay active until the owner explicitly releases this batch.
     OnBatchReady.Broadcast(Id);
@@ -183,7 +285,10 @@ void USideScrollerAssetLoadSubsystem::CompleteBatch(int32 Id)
 void USideScrollerAssetLoadSubsystem::FailBatch(int32 Id, const FString& Reason)
 {
     FSideScrollerAssetLoadBatch* Batch = Batches.Find(Id);
-    if (!Batch || bShuttingDown) return;
+    if (!Batch || bShuttingDown)
+    {
+        return;
+    }
     const FString Error = Reason; // Caller may pass data owned by this batch.
     Batch->State = ESideScrollerAssetLoadState::Failed;
     Batch->Error = Error;
@@ -203,7 +308,9 @@ float USideScrollerAssetLoadSubsystem::GetLoadProgress(int32 Id) const
     if (!Batch) return 0.0f;
     switch (Batch->State)
     {
-    case ESideScrollerAssetLoadState::LoadingStageConfig: return 0.15f * (Batch->ConfigHandle ? Batch->ConfigHandle->GetProgress() : 0.0f);
+    case ESideScrollerAssetLoadState::LoadingStageConfig:
+        return Batch->CatalogsHandle ? 0.05f + 0.1f * Batch->CatalogsHandle->GetProgress() :
+        0.05f * (Batch->ConfigHandle ? Batch->ConfigHandle->GetProgress() : 0.0f);
     case ESideScrollerAssetLoadState::LoadingDefinitions: return 0.15f + 0.35f * (Batch->DefinitionsHandle ? Batch->DefinitionsHandle->GetProgress() : 0.0f);
     case ESideScrollerAssetLoadState::LoadingMeshes: return 0.5f + 0.5f * (Batch->MeshesHandle ? Batch->MeshesHandle->GetProgress() : 0.0f);
     case ESideScrollerAssetLoadState::Ready: return 1.0f;
@@ -228,7 +335,7 @@ bool USideScrollerAssetLoadSubsystem::CopyLoadedResult(int32 Id, FSideScrollerSt
 
 void USideScrollerAssetLoadSubsystem::ClearBatchResources(FSideScrollerAssetLoadBatch& Batch)
 {
-    for (TSharedPtr<FStreamableHandle>* Handle : { &Batch.ConfigHandle, &Batch.DefinitionsHandle, &Batch.MeshesHandle })
+    for (TSharedPtr<FStreamableHandle>* Handle : { &Batch.ConfigHandle, &Batch.CatalogsHandle, &Batch.DefinitionsHandle, &Batch.MeshesHandle })
     {
         if (Handle->IsValid())
         {
@@ -240,6 +347,8 @@ void USideScrollerAssetLoadSubsystem::ClearBatchResources(FSideScrollerAssetLoad
     Batch.Result = FSideScrollerStageLoadResult();
     Batch.PendingConfig = FSideScrollerStageConfig();
     Batch.Configs = nullptr;
+    Batch.EnemyIds.Reset();
+    Batch.TriggerIds.Reset();
 }
 
 bool USideScrollerAssetLoadSubsystem::CancelBatch(int32 Id)

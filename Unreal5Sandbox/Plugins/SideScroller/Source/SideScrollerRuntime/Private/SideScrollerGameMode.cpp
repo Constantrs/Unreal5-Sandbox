@@ -24,71 +24,74 @@ void ASideScrollerGameMode::InitGame(const FString& MapName, const FString& Opti
     UE_LOG(LogSideScrollerGameMode, Display, TEXT("StageId=%s"), *StageId.ToString());
 }
 
-ESideScrollerLoadState ASideScrollerGameMode::GetEnemyLoadState() const
+ESideScrollerLoadState ASideScrollerGameMode::GetLoadState() const
 {
-    if (EnemyLoadState != ESideScrollerLoadState::LoadingStageConfig &&
-    EnemyLoadState != ESideScrollerLoadState::LoadingDefinitions &&
-    EnemyLoadState != ESideScrollerLoadState::LoadingMeshes)
+    if (LoadState != ESideScrollerLoadState::LoadingStageConfig &&
+    LoadState != ESideScrollerLoadState::LoadingDefinitions &&
+    LoadState != ESideScrollerLoadState::LoadingMeshes)
     {
-        return EnemyLoadState;
+        return LoadState;
     }
     
     const USideScrollerAssetLoadSubsystem* Loader = GetWorld() ? GetWorld()->GetSubsystem<USideScrollerAssetLoadSubsystem>() : nullptr;
-    if (!Loader) return EnemyLoadState;
+    if (!Loader) return LoadState;
     switch (Loader->GetLoadState(AssetLoadRequestId))
     {
         case ESideScrollerAssetLoadState::Queued:
         case ESideScrollerAssetLoadState::LoadingStageConfig: return ESideScrollerLoadState::LoadingStageConfig;
         case ESideScrollerAssetLoadState::LoadingDefinitions: return ESideScrollerLoadState::LoadingDefinitions;
         case ESideScrollerAssetLoadState::LoadingMeshes: return ESideScrollerLoadState::LoadingMeshes;
-        default: return EnemyLoadState;
+        default: return LoadState;
     }
 }
 
 bool ASideScrollerGameMode::ReleaseStageAssets()
 {
-    if (!AssetLoadRequestId || EnemyLoadState == ESideScrollerLoadState::Spawning)
+    if (!AssetLoadRequestId || LoadState == ESideScrollerLoadState::Spawning)
     {
         return false;
     }
-    const bool bWasLoading = EnemyLoadState != ESideScrollerLoadState::Ready &&
-        EnemyLoadState != ESideScrollerLoadState::Failed && EnemyLoadState != ESideScrollerLoadState::Cancelled;
+    const bool bWasLoading = LoadState != ESideScrollerLoadState::Ready &&
+        LoadState != ESideScrollerLoadState::Failed && LoadState != ESideScrollerLoadState::Cancelled;
     
     ClearAssetRequest();
     GetWorldTimerManager().ClearTimer(LoadProgressTimer);
     if (bWasLoading)
     {
-        EnemyLoadState = ESideScrollerLoadState::Cancelled;
+        LoadState = ESideScrollerLoadState::Cancelled;
         EnemyLoadError = TEXT("Stage assets were released before completion.");
         if (ULoadingScreenSubsystem* Loading = GetWorld()->GetSubsystem<ULoadingScreenSubsystem>())
         {
             Loading->CancelDebugLoading();
         }
-        OnEnemyLoadFailed(EnemyLoadError);
+        if (!bEndingPlay)
+        {
+            OnObjectsLoadFailed(EnemyLoadError);
+        }
     }
     return true;
-
 }
 
-void ASideScrollerGameMode::OnEnemiesReady()
+
+void ASideScrollerGameMode::OnObjectsReady()
 {
     
 }
 
-void ASideScrollerGameMode::OnEnemyLoadFailed(const FString& Reason)
+void ASideScrollerGameMode::OnObjectsLoadFailed(const FString& Reason)
 {
     
 }
 
 void ASideScrollerGameMode::StartStageConfigLoading()
 {
-    if (EnemyLoadState != ESideScrollerLoadState::Uninitialized || bEndingPlay)
+    if (LoadState != ESideScrollerLoadState::Uninitialized || bEndingPlay)
     {
         return;
     }
     if (!StageOptionError.IsEmpty())
     {
-        FailEnemyLoading(StageOptionError);
+        FailObjectsLoading(StageOptionError);
         return;
     }
     
@@ -96,25 +99,26 @@ void ASideScrollerGameMode::StartStageConfigLoading()
     AssetLoadRequestId = Loader ? Loader->LoadStageAssets(StageConfigs, StageId) : 0;
     if (!AssetLoadRequestId)
     {
-        FailEnemyLoading(TEXT("Cannot start stage resource request.")); return;
+        FailObjectsLoading(TEXT("Cannot start stage resource request.")); return;
     }
-    EnemyLoadState = ESideScrollerLoadState::LoadingStageConfig;
+    LoadState = ESideScrollerLoadState::LoadingStageConfig;
     GetWorldTimerManager().SetTimer(LoadProgressTimer, this, &ASideScrollerGameMode::UpdateLoadingProgress, 0.02f, true);
 }
 
-void ASideScrollerGameMode::StartEnemyLoading(USideScrollerEnemyReferenceAsset* Catalog, UDataTable* Table)
+void ASideScrollerGameMode::StartObjectLoading(USideScrollerEnemyReferenceAsset* EnemyCatalog,
+    USideScrollerTriggerRefAsset* TriggerCatalog, UDataTable* Table)
 {
-    if (EnemyLoadState != ESideScrollerLoadState::Uninitialized || bEndingPlay)
+    if (LoadState != ESideScrollerLoadState::Uninitialized || bEndingPlay)
     {
         return;
     }
     USideScrollerAssetLoadSubsystem* Loader = BindAssetLoader();
-    AssetLoadRequestId = Loader ? Loader->LoadEnemyAssets(Catalog, Table) : 0;
+    AssetLoadRequestId = Loader ? Loader->LoadObjectAssets(EnemyCatalog, TriggerCatalog, Table) : 0;
     if (!AssetLoadRequestId)
     {
-        FailEnemyLoading(TEXT("Cannot start enemy resource request.")); return;
+        FailObjectsLoading(TEXT("Cannot start enemy resource request.")); return;
     }
-    EnemyLoadState = ESideScrollerLoadState::LoadingDefinitions;
+    LoadState = ESideScrollerLoadState::LoadingDefinitions;
     GetWorldTimerManager().SetTimer(LoadProgressTimer, this, &ASideScrollerGameMode::UpdateLoadingProgress, 0.02f, true);
 }
 
@@ -140,9 +144,8 @@ void ASideScrollerGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
     }
     ClearAssetRequest();
     SpawnData = FSideScrollerStageLoadResult();
-    SpawnedEnemies.Reset();
+    SpawnedObjects.Reset();
     Super::EndPlay(EndPlayReason);
-
 }
 
 USideScrollerAssetLoadSubsystem* ASideScrollerGameMode::BindAssetLoader()
@@ -176,7 +179,7 @@ void ASideScrollerGameMode::TryStartLoading()
         ULoadingScreenSubsystem* Loading = GetWorld()->GetSubsystem<ULoadingScreenSubsystem>();
         if (!Loading || !(bUseDebugLoading ? Loading->StartDebugLoading(PC) : Loading->StartLoading(PC)))
         {
-            FailEnemyLoading(TEXT("Cannot create the loading screen."));
+            FailObjectsLoading(TEXT("Cannot create the loading screen."));
             return;
         }
         if (!bUseDebugLoading)
@@ -187,52 +190,81 @@ void ASideScrollerGameMode::TryStartLoading()
     }
 }
 
-void ASideScrollerGameMode::SpawnEnemies()
+void ASideScrollerGameMode::SpawnObjects()
 {
-    EnemyLoadState = ESideScrollerLoadState::Spawning;
+    LoadState = ESideScrollerLoadState::Spawning;
     for (const FSideScrollerEnemySpawnRow& Row : SpawnData.SpawnRows)
     {
-        const FSideScrollerLoadedEnemy* Loaded = SpawnData.Enemies.Find(Row.ObjectInfo.Id);
-        if (!Loaded || !Loaded->Class || !Loaded->Mesh)
+        const bool bTrigger = Row.ObjectInfo.Category == ESideScrollerCategory::TGR;
+        UClass* SpawnClass = nullptr;
+        USkeletalMesh* ExpectedMesh = nullptr;
+        if (bTrigger)
         {
-            FailEnemyLoading(TEXT("Spawn row has no loaded enemy configuration."));
+            if (const FSideScrollerLoadedTrigger* Loaded = SpawnData.Triggers.Find(Row.ObjectInfo.Id)) SpawnClass = Loaded->Class;
+        }
+        else if (Row.ObjectInfo.Category == ESideScrollerCategory::EM)
+        {
+            if (const FSideScrollerLoadedEnemy* Loaded = SpawnData.Enemies.Find(Row.ObjectInfo.Id))
+            {
+                SpawnClass = Loaded->Class;
+                ExpectedMesh = Loaded->Mesh;
+            }
+        }
+        if (!SpawnClass || (!bTrigger && !ExpectedMesh))
+        {
+            FailObjectsLoading(TEXT("Spawn row has no loaded object configuration."));
             return;
         }
-        AActor* Enemy = GetWorld()->SpawnActorDeferred<AActor>(Loaded->Class, Row.Transform, nullptr, nullptr,
-            ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding);
-        if (!Enemy)
+        AActor* Actor = GetWorld()->SpawnActorDeferred<AActor>(SpawnClass, Row.Transform, nullptr, nullptr,
+            bTrigger ? ESpawnActorCollisionHandlingMethod::AlwaysSpawn : ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding);
+        if (!Actor)
         {
-            FailEnemyLoading(FString::Printf(TEXT("Cannot spawn Enemy Id=%d (check spawn collision)."), Row.ObjectInfo.Id));
+            FailObjectsLoading(FString::Printf(TEXT("Cannot spawn Category=%d Id=%d (check spawn collision)."), static_cast<int32>(Row.ObjectInfo.Category), Row.ObjectInfo.Id));
             return;
         }
-        SpawnedEnemies.Add(Enemy);
-        USideScrollerObjectComponent* Object = Enemy->FindComponentByClass<USideScrollerObjectComponent>();
-        if (!Object) { FailEnemyLoading(TEXT("Enemy requires SideScrollerObjectComponent.")); return; }
-        Object->SetCategory(ESideScrollerCategory::EM);
-        Object->SetRootMeshAsset(Loaded->Mesh);
-        Enemy->FinishSpawning(Row.Transform);
-        if (bEndingPlay) return;
-        Object = Enemy->FindComponentByClass<USideScrollerObjectComponent>();
-        USkeletalMeshComponent* Mesh = IsValid(Enemy) ? ISideScrollerObject::Execute_GetRootSkeletalMeshComponent(Enemy) : nullptr;
-        if (!IsValid(Enemy) || Enemy->IsActorBeingDestroyed() || !Object || !Mesh || Mesh->GetOwner() != Enemy ||
-            Mesh->GetSkeletalMeshAsset() != Loaded->Mesh ||
-            ISideScrollerObject::Execute_GetCategory(Enemy) != ESideScrollerCategory::EM || !Object->RegisterWithGameState())
+        SpawnedObjects.Add(Actor);
+        USideScrollerObjectComponent* Object = Actor->FindComponentByClass<USideScrollerObjectComponent>();
+        if (!Object)
         {
-            FailEnemyLoading(TEXT("Enemy initialization failed: verify root mesh, category and GameState."));
+            FailObjectsLoading(TEXT("Spawned object requires SideScrollerObjectComponent.")); return;
+        }
+        Object->SetCategory(Row.ObjectInfo.Category);
+        if (!bTrigger)
+        {
+            Object->SetRootMeshAsset(ExpectedMesh);
+        }
+        Actor->FinishSpawning(Row.Transform);
+        if (bEndingPlay)
+        {
             return;
         }
+        Object = Actor->FindComponentByClass<USideScrollerObjectComponent>();
+        if (!IsValid(Actor) || Actor->IsActorBeingDestroyed() || !Object ||
+            ISideScrollerObject::Execute_GetCategory(Actor) != Row.ObjectInfo.Category)
+        {
+            FailObjectsLoading(TEXT("Object initialization failed: verify category and ObjectComponent."));
+            return;
+        }
+        if (!bTrigger)
+        {
+            USkeletalMeshComponent* Mesh = ISideScrollerObject::Execute_GetRootSkeletalMeshComponent(Actor);
+            if (!Mesh || Mesh->GetOwner() != Actor || Mesh->GetSkeletalMeshAsset() != ExpectedMesh)
+            {
+                FailObjectsLoading(TEXT("Enemy initialization failed: verify root mesh."));
+                return;
+            }
+        }
+        if (!Object->RegisterWithGameState()) { FailObjectsLoading(TEXT("Object registration failed: verify GameState.")); return; }
     }
-    EnemyLoadState = ESideScrollerLoadState::Ready;
+    LoadState = ESideScrollerLoadState::Ready;
     GetWorldTimerManager().ClearTimer(LoadProgressTimer);
-    UE_LOG(LogSideScrollerGameMode, Display, TEXT("Enemy initialization complete: %d instances, %d types."), SpawnedEnemies.Num(), SpawnData.Enemies.Num());
+    UE_LOG(LogSideScrollerGameMode, Display, TEXT("Stage object initialization complete: %d instances, %d Enemy types, %d Trigger types."),
+        SpawnedObjects.Num(), SpawnData.Enemies.Num(), SpawnData.Triggers.Num());
     SpawnData = FSideScrollerStageLoadResult(); // Loader retains the batch; GameMode drops its temporary copy.
-    OnEnemiesReady();
+    OnObjectsReady();
     if (!bEndingPlay)
     {
-        if (ULoadingScreenSubsystem* Loading = GetWorld()->GetSubsystem<ULoadingScreenSubsystem>())
-        {
-            Loading->CompleteLoading();
-        }
+        if (ULoadingScreenSubsystem* Loading = GetWorld()->GetSubsystem<ULoadingScreenSubsystem>()) Loading->CompleteLoading();   
     }
 }
 
@@ -241,7 +273,7 @@ void ASideScrollerGameMode::UpdateLoadingProgress()
     USideScrollerAssetLoadSubsystem* Loader = GetWorld()->GetSubsystem<USideScrollerAssetLoadSubsystem>();
     if (!Loader || Loader->GetLoadState(AssetLoadRequestId) == ESideScrollerAssetLoadState::Unknown)
     {
-        FailEnemyLoading(TEXT("Asset request was released before completion."));
+        FailObjectsLoading(TEXT("Asset request was released before completion."));
         return;
     }
     if (ULoadingScreenSubsystem* Loading = GetWorld()->GetSubsystem<ULoadingScreenSubsystem>())
@@ -250,18 +282,21 @@ void ASideScrollerGameMode::UpdateLoadingProgress()
     }
 }
 
-void ASideScrollerGameMode::FailEnemyLoading(const FString& Reason)
+void ASideScrollerGameMode::FailObjectsLoading(const FString& Reason)
 {
-    EnemyLoadState = ESideScrollerLoadState::Failed;
+    LoadState = ESideScrollerLoadState::Failed;
     EnemyLoadError = Reason;
     GetWorldTimerManager().ClearTimer(LoadProgressTimer);
-    for (const TWeakObjectPtr<AActor>& Enemy : SpawnedEnemies) if (Enemy.IsValid()) Enemy->Destroy();
-    SpawnedEnemies.Reset();
+    for (const TWeakObjectPtr<AActor>& Actor : SpawnedObjects) if (Actor.IsValid()) Actor->Destroy();
+    SpawnedObjects.Reset();
     SpawnData = FSideScrollerStageLoadResult();
     ClearAssetRequest();
     if (ULoadingScreenSubsystem* Loading = GetWorld()->GetSubsystem<ULoadingScreenSubsystem>()) Loading->CancelDebugLoading();
     UE_LOG(LogSideScrollerGameMode, Error, TEXT("Enemy loading failed: %s"), *EnemyLoadError);
-    OnEnemyLoadFailed(EnemyLoadError);
+    if (!bEndingPlay)
+    {
+        OnObjectsLoadFailed(EnemyLoadError);
+    }
 }
 
 void ASideScrollerGameMode::ClearAssetRequest()
@@ -270,7 +305,8 @@ void ASideScrollerGameMode::ClearAssetRequest()
     AssetLoadRequestId = 0;
     if (USideScrollerAssetLoadSubsystem* Loader = GetWorld()->GetSubsystem<USideScrollerAssetLoadSubsystem>()) Loader->ReleaseBatch(Id);
     EnemyRefAssets.Reset();
-    EnemySpawnTable.Reset();
+    TriggerRefAssets.Reset();
+    ObjectSpawnTable.Reset();
 }
 
 void ASideScrollerGameMode::HandleAssetsReady(int32 RequestId)
@@ -283,21 +319,22 @@ void ASideScrollerGameMode::HandleAssetsReady(int32 RequestId)
     USideScrollerAssetLoadSubsystem* Loader = GetWorld()->GetSubsystem<USideScrollerAssetLoadSubsystem>();
     if (!Loader || !Loader->CopyLoadedResult(RequestId, SpawnData))
     {
-        FailEnemyLoading(TEXT("Loaded result was released before spawning."));
+        FailObjectsLoading(TEXT("Loaded result was released before spawning."));
         return;
     }
+    
     StageId = SpawnData.StageId.IsNone() ? StageId : SpawnData.StageId;
     EnemyRefAssets = SpawnData.EnemyAssets;
-    EnemySpawnTable = SpawnData.EnemySpawnTable;
-    SpawnEnemies();
-
+    TriggerRefAssets = SpawnData.TriggerAssets;
+    ObjectSpawnTable = SpawnData.EnemySpawnTable;
+    SpawnObjects();
 }
 
 void ASideScrollerGameMode::HandleAssetsFailed(int32 RequestId, const FString& Reason)
 {
      if (!bEndingPlay && RequestId == AssetLoadRequestId)
      {
-         FailEnemyLoading(Reason);
+         FailObjectsLoading(Reason);
      }
 }
 
@@ -307,7 +344,7 @@ void ASideScrollerGameMode::HandleAssetsCancelled(int32 RequestId)
     {
         return;
     }
-    EnemyLoadState = ESideScrollerLoadState::Cancelled;
+    LoadState = ESideScrollerLoadState::Cancelled;
     EnemyLoadError = TEXT("Asset load request was cancelled.");
     GetWorldTimerManager().ClearTimer(LoadProgressTimer);
     ClearAssetRequest();
@@ -315,6 +352,5 @@ void ASideScrollerGameMode::HandleAssetsCancelled(int32 RequestId)
     {
         Loading->CancelDebugLoading();
     }
-    OnEnemyLoadFailed(EnemyLoadError);
-
+    if (!bEndingPlay) OnObjectsLoadFailed(EnemyLoadError);
 }

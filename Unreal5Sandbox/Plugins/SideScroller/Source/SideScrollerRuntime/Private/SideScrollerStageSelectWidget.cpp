@@ -53,7 +53,7 @@ bool USideScrollerStageSelectWidget::GetSelectedStage(FSideScrollerStageConfig& 
 
 FName USideScrollerStageSelectWidget::GetSelectedStageId() const
 {
-    return StageIds.IsValidIndex(SelectedIndex) ? StageIds[SelectedIndex] : NAME_None;
+    return Stages.IsValidIndex(SelectedIndex) ? Stages[SelectedIndex].StageId : NAME_None;
 }
 
 int32 USideScrollerStageSelectWidget::GetPageCount() const

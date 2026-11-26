@@ -57,9 +57,6 @@ private:
     TArray<FSideScrollerStageConfig> Stages;
 
     UPROPERTY(Transient)
-    TArray<FName> StageIds;
-
-    UPROPERTY(Transient)
     TObjectPtr<UVerticalBox> StageList;
 
     UPROPERTY(Transient)

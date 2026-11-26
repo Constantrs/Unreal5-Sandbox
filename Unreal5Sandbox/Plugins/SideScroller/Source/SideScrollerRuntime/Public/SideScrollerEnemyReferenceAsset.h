@@ -19,11 +19,7 @@ struct SIDESCROLLERRUNTIME_API FSideScrollerEnemyEntry
 	TSoftClassPtr<AActor> EnemyClass;
 };
 
-
-/**
- * 
- */
-UCLASS(meta = (PrioritizeCategories = "SideScroller"))
+UCLASS(BlueprintType, ClassGroup = (SideScroller))
 class SIDESCROLLERRUNTIME_API USideScrollerEnemyReferenceAsset : public UDataAsset
 {
 	GENERATED_BODY()

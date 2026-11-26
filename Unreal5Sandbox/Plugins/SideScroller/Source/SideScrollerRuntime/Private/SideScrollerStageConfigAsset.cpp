@@ -6,15 +6,18 @@
 
 FString USideScrollerStageConfigAsset::BuildStageOptions(FName Id)
 {
-    return TEXT("Stage_") + Id.ToString();
+    return TEXT("StageName=") + Id.ToString();
 }
 
 bool USideScrollerStageConfigAsset::ParseStageOptions(const FString& Options, FName& OutId, FString& OutError)
 {
     OutId = NAME_None;
     OutError.Reset();
-    if (!UGameplayStatics::HasOption(Options, TEXT("StageId"))) return true;
-    const FString Text = UGameplayStatics::ParseOption(Options, TEXT("StageId"));
+    if (!UGameplayStatics::HasOption(Options, TEXT("StageName=")))
+    {
+        return true;
+    }
+    const FString Text = UGameplayStatics::ParseOption(Options, TEXT("StageName="));
     if (Text.IsEmpty() || Text.Len() >= NAME_SIZE || FName(*Text).IsNone())
     {
         OutError = TEXT("StageId option is empty or invalid.");
@@ -81,9 +84,9 @@ bool USideScrollerStageConfigAsset::ResolveStage(FName RequestedId, const FStrin
             return false;
         }
     }
-    if (Config->EnemyAssets.IsNull() || Config->EnemySpawnTable.IsNull())
+    if (Config->EnemySpawnTable.IsNull())
     {
-        OutError = FString::Printf(TEXT("StageId %s needs EnemyAssets and EnemySpawnTable soft references."), *OutId.ToString());
+        OutError = FString::Printf(TEXT("StageId %s needs an Object Spawn Table soft reference."), *OutId.ToString());
         return false;
     }
     OutConfig = *Config;
