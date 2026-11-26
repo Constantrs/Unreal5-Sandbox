@@ -11,9 +11,16 @@ class USideScrollerCharaDataAsset;
 class USkeletalMesh;
 
 UENUM(BlueprintType)
-enum class ESideScrollerEnemyLoadState : uint8
+enum class ESideScrollerLoadState : uint8
 {
-    Idle, LoadingStageConfig, LoadingDefinitions, LoadingMeshes, Spawning, Ready, Failed, Cancelled
+    Uninitialized,
+    LoadingStageConfig,
+    LoadingDefinitions,
+    LoadingMeshes,
+    Spawning,
+    Ready,
+    Failed,
+    Cancelled
 };
 
 /** Single-player stage bootstrap: async resources -> deferred enemy spawning -> loading fade. */
@@ -28,20 +35,27 @@ public:
     virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 
     UFUNCTION(BlueprintPure, Category = "SideScroller|Enemies")
-    ESideScrollerEnemyLoadState GetEnemyLoadState() const { return EnemyLoadState; }
+    ESideScrollerLoadState GetEnemyLoadState() const;
 
     UFUNCTION(BlueprintPure, Category = "SideScroller|Enemies")
     FString GetEnemyLoadError() const { return EnemyLoadError; }
     
+    UFUNCTION(BlueprintPure, Category = "Stage|Assets")
+    int32 GetAssetLoadRequestId() const { return AssetLoadRequestId; }
+
+    /** Does not destroy enemies. Unfinished loads are cancelled; cannot release mid-spawn. */
+    UFUNCTION(BlueprintCallable, Category = "Stage|Assets")
+    bool ReleaseStageAssets();
+
 protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SideScroller|Enemies")
     TObjectPtr<USideScrollerStageConfigAsset> StageConfigs;
     
     UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SideScroller|Enemies")
-    TObjectPtr<USideScrollerEnemyReferenceAsset> EnemyRefAssets;
+    TWeakObjectPtr<USideScrollerEnemyReferenceAsset> EnemyRefAssets;
 
     UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SideScroller|Enemies")
-    TObjectPtr<UDataTable> EnemySpawnTable;
+    TWeakObjectPtr<UDataTable> EnemySpawnTable;
     
     UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SideScroller|Stage")
     TArray<FSideScrollerObjectInfo> ObjectInfos;
@@ -58,47 +72,41 @@ protected:
     virtual void OnEnemyLoadFailed(const FString& Reason);
 
     void StartStageConfigLoading();
-    
-    void StartEnemyLoading();
-    
-    /** Starts one batch. Non-enemy entries are ignored. */
-    void LoadAssetsFromScrollerObjectInfo(const TArray<FSideScrollerObjectInfo>& Infos);
+    void StartEnemyLoading(USideScrollerEnemyReferenceAsset* Catalog, UDataTable* Table);
     
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
     
 private:
-    void TryStartLoading();
-    void OnStageConfigLoaded(uint32 RequestId);
-    void OnDefinitionsLoaded(uint32 RequestId);
+    USideScrollerAssetLoadSubsystem* BindAssetLoader();
     
-    void OnMeshesLoaded(uint32 RequestId);
+    void TryStartLoading();
     void SpawnEnemies();
     void UpdateLoadingProgress();
     void FailEnemyLoading(const FString& Reason);
-    void ReleaseLoadHandles();
+    void ClearAssetRequest();
+    
+    UFUNCTION()
+    void HandleAssetsReady(int32 RequestId);
+
+    UFUNCTION()
+    void HandleAssetsFailed(int32 RequestId, const FString& Reason);
+
+    UFUNCTION()
+    void HandleAssetsCancelled(int32 RequestId);
     
     FTimerHandle LoadProgressTimer;
-    TSharedPtr<FStreamableHandle> DefinitionsHandle;
-    TSharedPtr<FStreamableHandle> StageConfigHandle;
-    TSharedPtr<FStreamableHandle> MeshesHandle;
-    uint32 LoadRequestId = 0;
+    int32 AssetLoadRequestId = 0;
     bool bEndingPlay = false;
-
-    UPROPERTY(Transient)
-    TMap<int32, FSideScrollerLoadedEnemy> LoadedEnemies;
-
-    UPROPERTY(Transient)
-    TArray<FSideScrollerEnemySpawnRow> SpawnRows;
-
-    UPROPERTY(Transient)
-    TArray<TWeakObjectPtr<AActor>> SpawnedEnemies;
-
-    ESideScrollerEnemyLoadState EnemyLoadState = ESideScrollerEnemyLoadState::Idle;
+    ESideScrollerLoadState EnemyLoadState = ESideScrollerLoadState::Uninitialized;
     FString EnemyLoadError;
     FString StageOptionError;
 
+    // Only retained while synchronous spawn/Blueprint initialization is executing.
     UPROPERTY(Transient)
-    FSideScrollerStageConfig PendingStageConfig;
+    FSideScrollerStageLoadResult SpawnData;
+
+    UPROPERTY(Transient)
+    TArray<TWeakObjectPtr<AActor>> SpawnedEnemies;
 };
 
