@@ -1,7 +1,6 @@
 #include "SideScrollerStageConfigAsset.h"
 
 #include "Engine/World.h"
-#include "GenericPlatform/GenericPlatformHttp.h"
 #include "Kismet/GameplayStatics.h"
 
 FString USideScrollerStageConfigAsset::BuildStageOptions(FName Id)
@@ -84,7 +83,7 @@ bool USideScrollerStageConfigAsset::ResolveStage(FName RequestedId, const FStrin
             return false;
         }
     }
-    if (Config->EnemySpawnTable.IsNull())
+    if (Config->ObjectSpawnTable.IsNull())
     {
         OutError = FString::Printf(TEXT("StageId %s needs an Object Spawn Table soft reference."), *OutId.ToString());
         return false;

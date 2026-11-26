@@ -37,16 +37,16 @@ public:
     UFUNCTION(BlueprintPure, Category = "SideScroller")
     ESideScrollerLoadState GetLoadState() const;
 
-    UFUNCTION(BlueprintPure, Category = "ideScroller|Stage")
+    UFUNCTION(BlueprintPure, Category = "SideScroller|Stage")
     bool IsStageReady() const { return !bEndingPlay && LoadState == ESideScrollerLoadState::Ready; }
     
-    UFUNCTION(BlueprintPure, Category = "SideScroller|Enemies")
-    FString GetEnemyLoadError() const { return EnemyLoadError; }
+    UFUNCTION(BlueprintPure, Category = "SideScroller|Objects")
+    FString GetObjectLoadError() const { return ObjectLoadError; }
     
-    UFUNCTION(BlueprintPure, Category = "Stage|Assets")
+    UFUNCTION(BlueprintPure, Category = "SideScroller|Assets")
     int32 GetAssetLoadRequestId() const { return AssetLoadRequestId; }
 
-    /** Does not destroy enemies. Unfinished loads are cancelled; cannot release mid-spawn. */
+    /** Does not destroy objects. Unfinished loads are cancelled; cannot release mid-spawn. */
     UFUNCTION(BlueprintCallable, Category = "Stage|Assets")
     bool ReleaseStageAssets();
 
@@ -60,7 +60,7 @@ protected:
     UPROPERTY(Transient, VisibleInstanceOnly, BlueprintReadOnly, Category = "Stage|Reference")
     TWeakObjectPtr<USideScrollerTriggerRefAsset> TriggerRefAssets;
 
-    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SideScroller|Object")
+    UPROPERTY(Transient, VisibleInstanceOnly, BlueprintReadOnly, Category = "Stage|Objects")
     TWeakObjectPtr<UDataTable> ObjectSpawnTable;
     
     UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "SideScroller|Stage")
@@ -88,7 +88,7 @@ private:
     void TryStartLoading();
     void SpawnObjects();
     void UpdateLoadingProgress();
-    void FailObjectsLoading(const FString& Reason);
+    void FailObjectLoading(const FString& Reason);
     void ClearAssetRequest();
     
     UFUNCTION()
@@ -104,7 +104,7 @@ private:
     int32 AssetLoadRequestId = 0;
     bool bEndingPlay = false;
     ESideScrollerLoadState LoadState = ESideScrollerLoadState::Uninitialized;
-    FString EnemyLoadError;
+    FString ObjectLoadError;
     FString StageOptionError;
 
     // Only retained while synchronous spawn/Blueprint initialization is executing.

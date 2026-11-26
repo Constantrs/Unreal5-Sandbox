@@ -32,3 +32,18 @@ struct SIDESCROLLERRUNTIME_API FSideScrollerObjectInfo
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     int32 Id = 0;
 };
+
+USTRUCT(BlueprintType)
+struct SIDESCROLLERRUNTIME_API FSideScrollerObjectParam
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SideScroller|Object")
+    int32 Type = 0;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SideScroller|Object")
+    float Param1 = 0.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SideScroller|Object")
+    float Param2 = 0.0f;
+};

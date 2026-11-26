@@ -41,7 +41,7 @@ int32 USideScrollerAssetLoadSubsystem::LoadObjectAssets(USideScrollerEnemyRefere
     }
     Batches[Id].Result.EnemyAssets = EnemyCatalog;
     Batches[Id].Result.TriggerAssets = TriggerCatalog;
-    Batches[Id].Result.EnemySpawnTable = SpawnTable;
+    Batches[Id].Result.ObjectSpawnTable = SpawnTable;
     GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this, Id] { BeginObjectLoad(Id); }));
     return Id;
 }
@@ -62,7 +62,7 @@ void USideScrollerAssetLoadSubsystem::BeginStageLoad(int32 Id)
     Batch->State = ESideScrollerAssetLoadState::LoadingStageConfig;
     TArray<FSoftObjectPath> Paths;
     Paths.AddUnique(Batch->PendingConfig.EnemyAssets.ToSoftObjectPath());
-    Paths.AddUnique(Batch->PendingConfig.EnemySpawnTable.ToSoftObjectPath());
+    Paths.AddUnique(Batch->PendingConfig.ObjectSpawnTable.ToSoftObjectPath());
     Batch->ConfigHandle = UAssetManager::Get().GetStreamableManager().RequestAsyncLoad(Paths,
         FStreamableDelegate::CreateWeakLambda(this, [this, Id] { OnConfigLoaded(Id); }));
     if (!Batch->ConfigHandle) FailBatch(Id, TEXT("Could not request stage catalog/spawn table."));
@@ -73,8 +73,8 @@ void USideScrollerAssetLoadSubsystem::OnConfigLoaded(int32 Id)
     FSideScrollerAssetLoadBatch* Batch = Batches.Find(Id);
     if (bShuttingDown || !Batch || Batch->State != ESideScrollerAssetLoadState::LoadingStageConfig) return;
     Batch->Result.EnemyAssets = Batch->PendingConfig.EnemyAssets.Get();
-    Batch->Result.EnemySpawnTable = Batch->PendingConfig.EnemySpawnTable.Get();
-    if (!Batch->Result.EnemyAssets || !Batch->Result.EnemySpawnTable)
+    Batch->Result.ObjectSpawnTable = Batch->PendingConfig.ObjectSpawnTable.Get();
+    if (!Batch->Result.EnemyAssets || !Batch->Result.ObjectSpawnTable)
     {
         FailBatch(Id, TEXT("Object Spawn Table failed to load."));
         return;
@@ -87,8 +87,8 @@ void USideScrollerAssetLoadSubsystem::BeginObjectLoad(int32 Id)
     FSideScrollerAssetLoadBatch* Batch = Batches.Find(Id);
     if (bShuttingDown || !Batch || (Batch->State != ESideScrollerAssetLoadState::Queued &&
         Batch->State != ESideScrollerAssetLoadState::LoadingStageConfig)) return;
-    UDataTable* Table = Batch->Result.EnemySpawnTable;
-    if (!Table || Table->GetRowStruct() != FSideScrollerEnemySpawnRow::StaticStruct())
+    UDataTable* Table = Batch->Result.ObjectSpawnTable;
+    if (!Table || Table->GetRowStruct() != FSideScrollerObjectSpawnRow::StaticStruct())
     {
         FailBatch(Id, TEXT("Assign EnemySpawnTable with SideScrollerEnemySpawnRow rows."));
         return;
@@ -97,7 +97,7 @@ void USideScrollerAssetLoadSubsystem::BeginObjectLoad(int32 Id)
     Names.Sort(FNameLexicalLess());
     for (FName Name : Names)
     {
-        const FSideScrollerEnemySpawnRow* Row = Table->FindRow<FSideScrollerEnemySpawnRow>(Name, TEXT("Enemy loading"));
+        const FSideScrollerObjectSpawnRow* Row = Table->FindRow<FSideScrollerObjectSpawnRow>(Name, TEXT("Enemy loading"));
         if (!Row || (Row->ObjectInfo.Category != ESideScrollerCategory::EM && Row->ObjectInfo.Category != ESideScrollerCategory::TGR))
         {
             continue;

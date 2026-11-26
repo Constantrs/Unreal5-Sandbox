@@ -4,7 +4,7 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "SideScrollerEnemyReferenceAsset.h"
 #include "SideScrollerTriggerRefAsset.h"
-#include "SideScrollerEnemySpawnRow.h"
+#include "SideScrollerObjectSpawnTable.h"
 #include "SideScrollerStageConfigAsset.h"
 #include "SideScrollerAssetLoadSubsystem.generated.h"
 
@@ -62,10 +62,10 @@ struct SIDESCROLLERRUNTIME_API FSideScrollerStageLoadResult
 	TObjectPtr<USideScrollerTriggerRefAsset> TriggerAssets;
 
 	UPROPERTY(Transient, BlueprintReadOnly)
-	TObjectPtr<UDataTable> EnemySpawnTable;
+	TObjectPtr<UDataTable> ObjectSpawnTable;
 
 	UPROPERTY(Transient, BlueprintReadOnly)
-	TArray<FSideScrollerEnemySpawnRow> SpawnRows;
+	TArray<FSideScrollerObjectSpawnRow> SpawnRows;
 
 	UPROPERTY(Transient, BlueprintReadOnly)
 	TMap<int32, FSideScrollerLoadedEnemy> Enemies;
@@ -111,9 +111,10 @@ public:
     UFUNCTION(BlueprintCallable, Category = "SideScroller|Assets")
     int32 LoadStageAssets(USideScrollerStageConfigAsset* Configs, FName StageId);
 
+	/** Optional entry point when small catalogs/table resources are already loaded. */
 	UFUNCTION(BlueprintCallable, Category = "SideScroller|Assets")
 	int32 LoadObjectAssets(USideScrollerEnemyReferenceAsset* EnemyCatalog, USideScrollerTriggerRefAsset* TriggerCatalog, UDataTable* SpawnTable);
-	
+
     UFUNCTION(BlueprintPure, Category = "SideScroller|Assets")
     ESideScrollerAssetLoadState GetLoadState(int32 RequestId) const;
 

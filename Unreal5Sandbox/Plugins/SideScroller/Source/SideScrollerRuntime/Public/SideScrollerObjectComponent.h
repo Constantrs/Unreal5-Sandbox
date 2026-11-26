@@ -24,6 +24,12 @@ public:
     void SetCategory(ESideScrollerCategory InCategory);
 
     UFUNCTION(BlueprintPure, Category = "SideScroller|Object")
+    FSideScrollerObjectParam GetObjectParam() const { return ObjectParam; }
+    
+    UFUNCTION(BlueprintCallable, Category = "SideScroller|Object")
+    void SetObjectParam(const FSideScrollerObjectParam& InParam) { ObjectParam = InParam; }
+    
+    UFUNCTION(BlueprintPure, Category = "SideScroller|Object")
     ESideScrollerHorizontalDirection GetHorizontalDirection() const { return HorizontalDirection; }
 
     UFUNCTION(BlueprintCallable, Category = "SideScroller|Object")
@@ -48,6 +54,9 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SideScroller|Object")
     ESideScrollerCategory Category = ESideScrollerCategory::Undefined;
 
+    UPROPERTY(Transient, VisibleInstanceOnly, BlueprintReadOnly, Category = "SideScroller|Object")
+    FSideScrollerObjectParam ObjectParam;
+    
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SideScroller|Object")
     ESideScrollerHorizontalDirection HorizontalDirection = ESideScrollerHorizontalDirection::Right;
     

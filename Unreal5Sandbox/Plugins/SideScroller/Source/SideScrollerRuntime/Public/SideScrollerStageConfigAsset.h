@@ -22,8 +22,8 @@ struct SIDESCROLLERRUNTIME_API FSideScrollerStageConfig
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSoftObjectPtr<USideScrollerTriggerRefAsset> TriggerAssets;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Stage", meta = (DisplayName = "Object Spawn Table"))
-	TSoftObjectPtr<UDataTable> EnemySpawnTable;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSoftObjectPtr<UDataTable> ObjectSpawnTable;
 	
 	/** Menu destination and direct PIE lookup. Reading this reference does not load the map. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
